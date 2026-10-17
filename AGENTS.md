@@ -74,11 +74,30 @@ found mid-task — survives a context reset. The board is project-local
 
 ```
 scripts/bd-sync.py                 # after editing tasks.md; idempotent, --dry-run supported
+scripts/bd-claim.py <task-id>      # take a task, and record the worktree it runs in
 bd ready                           # unblocked work
-bd update <bead-id> --claim        # take a task before starting it
 bd unclaim <bead-id>               # release a claim whose agent died
 bd --help                          # command reference (safe, unlike `bd prime`)
 ```
+
+**Starting a task — claim first, in one step, always.** This is the step that
+gets skipped when it is only prose, so it is one command run *before* the first
+edit and *before* any subagent is launched:
+
+```
+scripts/bd-claim.py 2.7 --worktree /tmp/opencode/worktrees/2.7
+scripts/bd-claim.py 2.12                      # worked in this checkout
+```
+
+It resolves the bead by its external reference (a typo cannot hit "the last
+touched issue"), refuses to claim a closed bead, lets `bd --claim` refuse to steal
+another actor's live claim, and appends the worktree and branch to the bead's
+*notes* — never its description, which `bd-sync.py` rewrites from `tasks.md`.
+
+For delegated work the **main agent claims, before the subagent starts**: a
+worktree does not carry `.beads/` (it is ignored), so a subagent can neither see
+nor claim its bead, and must not run `bd` at all. That also means the claim is
+the only place the worktree is recorded, which is why it names it.
 
 Keep beads' own *rule text* out of an agent's context. `bd setup opencode` appends
 a section to this file and `bd prime` injects one at runtime; both say "use beads
