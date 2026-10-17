@@ -87,6 +87,17 @@ bd update <bead-id> --claim   # take a task before starting it
 - The script does not derive task-to-task dependencies, because tasks.md does not
   record them. Add a real blocker with `bd dep add` when you find one.
 
+Per-project settings this relies on, stored in `.beads/config.yaml` and therefore
+**lost on a fresh clone** — reapply them after `bd init`:
+
+```
+bd config set events-journal true   # the board refreshes in seconds without re-reading everything
+bd config set export.auto true      # keeps .beads/issues.jsonl fresh after writes
+bd export -o .beads/issues.jsonl    # seed it once: `bd list --json` omits dependency
+                                    # links, so the board builds its epic→task tree
+                                    # from this file, and nothing creates it by default
+```
+
 ## Parallel work
 
 Independent tasks run in **git worktrees**, one per task, so no agent ever edits
