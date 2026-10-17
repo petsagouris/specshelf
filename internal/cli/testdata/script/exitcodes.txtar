@@ -1,0 +1,28 @@
+# The exit-code and stream contract: 0 on success, 2 on a usage error, 1 on a
+# runtime error, with every diagnostic on stderr carrying the specshelf prefix
+# and stdout left carrying the payload alone.
+
+# Success: the payload on stdout, nothing at all on stderr.
+exitcode 0 specshelf --home $WORK/vault path
+cmpenv stdout path.stdout
+stderr '^$'
+
+# Usage errors exit 2.
+exitcode 2 specshelf --home $WORK/vault show
+stderr '^specshelf: accepts 1 arg\(s\), received 0$'
+
+exitcode 2 specshelf --home $WORK/vault list --nope
+stderr '^specshelf: unknown flag'
+
+exitcode 2 specshelf --home $WORK/vault nope
+stderr '^specshelf: unknown command'
+
+exitcode 2 specshelf --home $WORK/vault --vault work list
+stderr '^specshelf: --home and --vault are mutually exclusive$'
+
+# A runtime error exits 1, and its message starts with the prefix.
+exitcode 1 specshelf --home $WORK/vault show missing
+stderr '^specshelf: unknown reference "missing"$'
+
+-- path.stdout --
+$WORK/vault

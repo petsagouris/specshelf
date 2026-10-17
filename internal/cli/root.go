@@ -86,6 +86,8 @@ func NewRootCommand() *cobra.Command {
 	flags.String("home", "", "Vault directory. Defaults to SPECSHELF_HOME, the config file, or ~/.agents/spec-vault.")
 	flags.String("vault", "", "A named vault declared in the config file.")
 	flags.Bool("project", false, "Use the project vault found by walking up for a .specshelf directory.")
+	color := colorModeValue(colorAuto)
+	flags.Var(&color, "color", "Colour output: auto, always, or never.")
 
 	root.AddCommand(
 		newInitCommand(),

@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
@@ -57,5 +59,34 @@ func TestScript(t *testing.T) {
 			env.Setenv("SPECSHELF_CONFIG", filepath.Join(env.WorkDir, "config.toml"))
 			return nil
 		},
+		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"exitcode": cmdExitCode,
+		},
 	})
+}
+
+// cmdExitCode runs a command and asserts its exact exit status, which the
+// builtin exec cannot do: it only checks success or failure. `exitcode 2
+// specshelf ...` makes the 0/1/2 contract visible in the script. The output is
+// captured through Exec, so a following stdout or stderr assertion sees it.
+func cmdExitCode(ts *testscript.TestScript, _ bool, args []string) {
+	if len(args) < 2 {
+		ts.Fatalf("usage: exitcode <code> <command> [args...]")
+	}
+	want, err := strconv.Atoi(args[0])
+	if err != nil {
+		ts.Fatalf("exitcode: %v", err)
+	}
+	runErr := ts.Exec(args[1], args[2:]...)
+	got := 0
+	if runErr != nil {
+		var exit *exec.ExitError
+		if !errors.As(runErr, &exit) {
+			ts.Fatalf("exitcode: %v", runErr)
+		}
+		got = exit.ExitCode()
+	}
+	if got != want {
+		ts.Fatalf("exit code = %d, want %d", got, want)
+	}
 }

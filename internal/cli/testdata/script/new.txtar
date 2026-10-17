@@ -19,3 +19,11 @@ exec specshelf --home $WORK/vault new 'Current session' --current-codex-session
 stdout 'vault/specs/\d{4}-\d{2}-\d{2}-current-session\.md$'
 exec specshelf --home $WORK/vault list
 stdout 'thread-9'
+
+# With no thread id it falls back to CODEX_SESSION_ID.
+env CODEX_THREAD_ID=
+env CODEX_SESSION_ID=session-7
+exec specshelf --home $WORK/vault new 'Fallback session' --current-codex-session
+stdout 'vault/specs/\d{4}-\d{2}-\d{2}-fallback-session\.md$'
+exec specshelf --home $WORK/vault list
+stdout 'session-7'

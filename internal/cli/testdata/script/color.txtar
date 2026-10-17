@@ -1,0 +1,39 @@
+# Colour has three modes and never reaches a machine payload.
+
+# --color always emits escapes on the display output, --color never does not.
+exec specshelf --home $WORK/vault prime --color always
+stdout '\x1b\[1m'
+exec specshelf --home $WORK/vault prime --color never
+! stdout '\x1b'
+
+# The default mode with this non-terminal stdout emits none, and NO_COLOR
+# suppresses it too.
+exec specshelf --home $WORK/vault prime
+! stdout '\x1b'
+env NO_COLOR=1
+exec specshelf --home $WORK/vault prime
+! stdout '\x1b'
+env NO_COLOR=
+
+# A machine format never carries escapes, even with colour forced on.
+exec specshelf --home $WORK/vault prime --json --color always
+! stdout '\x1b'
+exec specshelf --home $WORK/vault list --format tsv --color always
+! stdout '\x1b'
+
+# Single-value stdout never carries escapes either.
+exec specshelf --home $WORK/vault path --color always
+! stdout '\x1b'
+exec specshelf --home $WORK/vault new 'Coloured' --color always
+! stdout '\x1b'
+
+-- vault/specs/2026-10-17-doc.md --
+---
+id: spec-20261017-doc
+kind: spec
+title: Doc
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+---
+# Doc
