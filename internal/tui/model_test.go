@@ -72,7 +72,7 @@ func update(m *Model, msg tea.Msg) tea.Cmd {
 }
 
 // run executes cmd and returns its message.
-func run(t *testing.T, cmd tea.Cmd) tea.Msg {
+func execCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
 	t.Helper()
 	if cmd == nil {
 		t.Fatal("expected a command, got nil")
@@ -109,7 +109,7 @@ func TestOpenDetail(t *testing.T) {
 	if m.mode != modeDetail {
 		t.Fatalf("mode = %d, want detail", m.mode)
 	}
-	msg := run(t, cmd)
+	msg := execCmd(t, cmd)
 	update(m, msg)
 	if store.finds != 1 {
 		t.Fatalf("Find calls = %d, want 1", store.finds)
@@ -187,7 +187,7 @@ func TestQuitKeys(t *testing.T) {
 		if !m.quitting {
 			t.Fatalf("key %q did not mark the session quitting", key.String())
 		}
-		if msg := run(t, cmd); msg != tea.Quit() {
+		if msg := execCmd(t, cmd); msg != tea.Quit() {
 			t.Fatalf("key %q produced %#v, want QuitMsg", key.String(), msg)
 		}
 	}

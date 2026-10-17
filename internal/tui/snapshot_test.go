@@ -21,7 +21,7 @@ func listModel(w, h int) *Model {
 func detailModel(t *testing.T, w, h int) *Model {
 	t.Helper()
 	m := listModel(w, h)
-	update(m, run(t, update(m, kc(tea.KeyEnter))))
+	update(m, execCmd(t, update(m, kc(tea.KeyEnter))))
 	return m
 }
 

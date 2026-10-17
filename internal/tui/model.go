@@ -106,6 +106,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if msg.Width <= 0 && msg.Height <= 0 {
+			// The terminal went away; end the session rather than render to a
+			// zero-sized screen.
+			m.quitting = true
+			return m, tea.Quit
+		}
 		return m, nil
 	case tea.KeyPressMsg:
 		return m, m.handleKey(msg)

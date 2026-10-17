@@ -12,7 +12,7 @@ func loadedFake(t *testing.T) (*Model, *fakeStore) {
 	t.Helper()
 	store := &fakeStore{records: sampleRecords(), content: sampleContent()}
 	m := New(store)
-	update(m, run(t, m.Init()))
+	update(m, execCmd(t, m.Init()))
 	return m, store
 }
 
@@ -52,7 +52,7 @@ func TestFilterTextNarrowsWithoutFilesystem(t *testing.T) {
 
 	// Reload is the only operation that re-reads.
 	update(m, kc(tea.KeyEnter))
-	run(t, update(m, k('r')))
+	execCmd(t, update(m, k('r')))
 	if store.lists != 2 {
 		t.Fatalf("List calls after reload = %d, want 2", store.lists)
 	}
