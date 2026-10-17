@@ -1,0 +1,56 @@
+# prime prints the vault heading and one block per matching document.
+exec specshelf --home $WORK/vault prime --repo billing
+cmpenv stdout prime.stdout
+
+# With no match it says so under the same heading.
+exec specshelf --home $WORK/vault prime --repo nothing
+cmpenv stdout empty.stdout
+
+-- prime.stdout --
+# Agent Spec Vault
+
+Vault: `$WORK/vault`
+
+## Relevant Specs And Decisions
+
+- `spec-20261017-alpha` (spec, active) Alpha
+  Path: `specs/2026-10-17-alpha.md`
+  Repos: billing
+  Tags: tooling
+  Codex sessions: s1
+-- empty.stdout --
+# Agent Spec Vault
+
+Vault: `$WORK/vault`
+
+No matching specs or decisions found.
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - billing
+tags:
+  - tooling
+codex_sessions:
+  - s1
+---
+# Alpha
+
+line two
+
+needle here
+-- vault/specs/2026-10-17-beta.md --
+---
+id: spec-20261017-beta
+kind: spec
+title: Beta
+status: active
+created: 2026-10-17
+updated: 2026-10-16
+---
+# Beta

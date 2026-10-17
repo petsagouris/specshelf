@@ -1,0 +1,23 @@
+# An unreadable document is skipped with one warning on stderr; stdout carries
+# only the readable payload and the exit code is still success.
+exec specshelf --home $WORK/vault list
+cmp stdout good.stdout
+stderr '^specshelf: specs/2026-10-17-broken.md: unterminated frontmatter$'
+
+-- good.stdout --
+spec-20261017-good	spec	active	2026-10-17	-	-	-	specs/2026-10-17-good.md	Good
+-- vault/specs/2026-10-17-good.md --
+---
+id: spec-20261017-good
+kind: spec
+title: Good
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+---
+# Good
+-- vault/specs/2026-10-17-broken.md --
+---
+id: spec-20261017-broken
+kind: spec
+title: Broken

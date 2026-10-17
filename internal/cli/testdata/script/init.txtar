@@ -1,0 +1,20 @@
+# init creates the vault layout, prints its root, and writes no index.
+exec specshelf --home $WORK/vault init
+cmpenv stdout init.stdout
+exists $WORK/vault/specs
+exists $WORK/vault/decisions
+exists $WORK/vault/templates/spec.md
+exists $WORK/vault/templates/decision.md
+exists $WORK/vault/README.md
+! exists $WORK/vault/index.jsonl
+
+# A user-edited template survives a second init, which still prints the root.
+cp edited-template.md $WORK/vault/templates/spec.md
+exec specshelf --home $WORK/vault init
+cmpenv stdout init.stdout
+grep 'user edit survives' $WORK/vault/templates/spec.md
+
+-- init.stdout --
+$WORK/vault
+-- edited-template.md --
+# user edit survives
