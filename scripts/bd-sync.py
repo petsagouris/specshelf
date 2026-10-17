@@ -31,8 +31,6 @@ TASKS_MD = (
 )
 MILESTONE = re.compile(r"^## (\d+)\.\s+(.*)$")
 TASK = re.compile(r"^- \[( |x)\] (\d+\.\d+)\s+(.*)$")
-TITLE_LIMIT = 200
-
 failures = []
 
 
@@ -55,13 +53,40 @@ def bd(args, dry_run=False):
     return out
 
 
-def label(prefix, text):
-    """Build a title that fits bd's title limit, keeping the text in the body."""
+STOP_WORDS = {
+    "a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on",
+    "or", "that", "the", "to", "which", "with",
+}
+
+
+def label(prefix, text, limit=64):
+    """Build a short card label.
+
+    A board is read at a glance, so a title that is a paragraph is useless: the
+    label is the first clause that fits, and the full task text always lives in
+    the description. Nothing is invented — the label is a prefix of the text, cut
+    at a separator the text already contains.
+    """
     text = " ".join(text.split())
-    if len(prefix) + len(text) > TITLE_LIMIT:
-        cut = text[: TITLE_LIMIT - len(prefix)].rsplit(" ", 1)[0]
-        text = cut + "…"
-    return f"{prefix} {text}"
+    for separator in (":", ";", ","):
+        head, found, _ = text.partition(separator)
+        if found and 15 <= len(head) <= limit:
+            return f"{prefix} {tidy(head)}"
+    if len(text) <= limit:
+        return f"{prefix} {tidy(text)}"
+    words = text[:limit].rsplit(" ", 1)[0].split()
+    for len(words) > 1 and words[-1].lower() in STOP_WORDS:
+        words.pop()
+    return f"{prefix} {tidy(' '.join(words))}…"
+
+
+def tidy(text):
+    """Remove what a cut leaves dangling: code marks, an unclosed bracket, and
+    trailing punctuation."""
+    text = text.replace("`", "").strip()
+    if text.count("(") > text.count(")"):
+        text = text[: text.rfind("(")]
+    return text.rstrip(" \t`(,;:-—").strip()
 
 
 def parse_tasks():
@@ -91,7 +116,7 @@ def main():
         if b.get("external_ref")
     }
 
-    created = closed = reopened = 0
+    created = closed = retitled = reopened = 0
     epics = {}
 
     for number, title in milestones:
@@ -123,12 +148,13 @@ def main():
             task["milestone"], 0
         ) + (0 if task["done"] else 1)
 
+        want_title = label(f"[{task['id']}]", task["text"])
         bead = existing.get(ref)
         if not bead:
             bd(
                 [
                     "create",
-                    label(f"[{task['id']}]", task["text"]),
+                    want_title,
                     "-t",
                     "task",
                     "--external-ref",
@@ -143,6 +169,13 @@ def main():
             )
             created += 1
             continue
+
+        # Titles are derived, so changing how a label is built reconciles the
+        # board instead of leaving it showing an older label.
+        if bead.get("title") != want_title:
+            print(f"retitling {bead['id']} ({task['id']})")
+            bd(["update", bead["id"], "--title", want_title], dry_run)
+            retitled += 1
 
         want = "closed" if task["done"] else "open"
         if bead["status"] == want:
@@ -167,7 +200,7 @@ def main():
 
     print(
         f"{len(tasks)} tasks and {len(milestones)} milestones mirrored: "
-        f"{created} created, {closed} closed, {reopened} reopened"
+        f"{created} created, {closed} closed, {retitled} retitled, {reopened} reopened"
         + (" (dry run)" if dry_run else "")
     )
     if failures:
