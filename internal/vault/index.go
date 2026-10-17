@@ -50,9 +50,75 @@ func EncodeIndex(records []IndexRecord) []byte {
 // order: the specs directory before decisions, and file name within a
 // directory. A missing directory is skipped, so a vault without one is not an
 // error; a document that cannot be read or parsed is, naming the file. Index
-// only reads — writing the file atomically belongs to the caller.
+// only reads — writing the file atomically belongs to the caller. List is the
+// tolerant path for a command that should skip and warn instead of failing.
 func Index(root string) ([]IndexRecord, error) {
 	var records []IndexRecord
+	err := walkDocuments(root, func(dir, name string) error {
+		record, err := readIndexRecord(root, dir, name)
+		if err != nil {
+			return err
+		}
+		records = append(records, record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
+// List reads every document in the vault the way Index does, but a document it
+// cannot read or parse is skipped and returned as a warning rather than failing
+// the whole listing. The readable records come back in index order; the error
+// is only for a directory that cannot be listed at all. A listing command
+// prints each warning and still exits successfully.
+func List(root string) ([]IndexRecord, []Warning, error) {
+	var records []IndexRecord
+	var warnings []Warning
+	err := walkDocuments(root, func(dir, name string) error {
+		record, err := readIndexRecord(root, dir, name)
+		if err != nil {
+			warnings = append(warnings, warn(dir+"/"+name, err))
+			return nil
+		}
+		records = append(records, record)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return records, warnings, nil
+}
+
+// Warning is a document the tolerant path could not read: its vault relative
+// path and the reason, with no CLI prefix. The store never prints it; the
+// command surface is what writes Text to stderr.
+type Warning struct {
+	Path   string
+	Reason string
+}
+
+// Text is the single stderr line for the warning, naming the path and the reason.
+func (w Warning) Text() string { return w.Path + ": " + w.Reason }
+
+// warn builds the warning for rel from a read error: the reason is the
+// underlying message with the document's own name removed, so Text names the
+// path exactly once.
+func warn(rel string, err error) Warning {
+	reason := strings.TrimSuffix(err.Error(), ": "+rel)
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		reason = pathErr.Err.Error()
+	}
+	return Warning{Path: rel, Reason: reason}
+}
+
+// walkDocuments calls visit for every Markdown document in the vault in index
+// order: the specs directory before decisions, and file name within a
+// directory. A missing directory is skipped. A directory that cannot be read,
+// and any error visit returns, stops the walk.
+func walkDocuments(root string, visit func(dir, name string) error) error {
 	for _, dir := range []string{"specs", "decisions"} {
 		path := root + "/" + dir
 		entries, err := os.ReadDir(path)
@@ -60,7 +126,7 @@ func Index(root string) ([]IndexRecord, error) {
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", path, err)
+			return fmt.Errorf("read %s: %w", path, err)
 		}
 		// os.ReadDir already returns entries sorted by file name.
 		for _, entry := range entries {
@@ -68,14 +134,12 @@ func Index(root string) ([]IndexRecord, error) {
 			if entry.IsDir() || !strings.HasSuffix(name, ".md") {
 				continue
 			}
-			rec, err := readIndexRecord(path, dir, name)
-			if err != nil {
-				return nil, err
+			if err := visit(dir, name); err != nil {
+				return err
 			}
-			records = append(records, rec)
 		}
 	}
-	return records, nil
+	return nil
 }
 
 // WriteIndex regenerates index.jsonl from the vault's documents and writes it
@@ -91,18 +155,24 @@ func WriteIndex(root string) error {
 }
 
 // readIndexRecord reads one document and builds its record. A file that cannot
-// be read or parsed is an error naming it; deciding to skip and warn is the
-// caller's job.
-func readIndexRecord(path, dir, name string) (IndexRecord, error) {
-	full := path + "/" + name
-	data, err := os.ReadFile(full)
+// be read or parsed is an error; Index reports it and List turns it into a
+// warning.
+func readIndexRecord(root, dir, name string) (IndexRecord, error) {
+	rel := dir + "/" + name
+	data, err := os.ReadFile(filepath.Join(root, dir, name))
 	if err != nil {
-		return IndexRecord{}, fmt.Errorf("read %s: %w", full, err)
+		return IndexRecord{}, fmt.Errorf("read %s: %w", rel, err)
 	}
-	doc, err := frontmatter.Parse(full, data)
+	doc, err := frontmatter.Parse(rel, data)
 	if err != nil {
 		return IndexRecord{}, err
 	}
+	return newRecord(doc, rel), nil
+}
+
+// newRecord is the index record for a parsed document at the vault relative
+// slash path rel.
+func newRecord(doc frontmatter.Document, rel string) IndexRecord {
 	return IndexRecord{
 		ID:            doc.ID(),
 		Kind:          doc.Kind(),
@@ -113,9 +183,9 @@ func readIndexRecord(path, dir, name string) (IndexRecord, error) {
 		Repos:         doc.Repos(),
 		Tags:          doc.Tags(),
 		CodexSessions: doc.CodexSessions(),
-		Path:          dir + "/" + name,
+		Path:          rel,
 		Summary:       summary(doc.Body),
-	}, nil
+	}
 }
 
 // summary is the first body line that is neither blank nor a heading, with
