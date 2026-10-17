@@ -42,8 +42,8 @@ func parseBlock(raw string) Metadata {
 		}
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		switch {
-		case value == "" || value == "[]":
+		switch value {
+		case "", "[]":
 			metadata[key] = []string{}
 			listKey = key
 		default:
