@@ -104,6 +104,8 @@ func NewRootCommand() *cobra.Command {
 		newPrimeCommand(),
 		newPathCommand(),
 		newExportCommand(),
+		newCompletionCommand(),
+		newManCommand(),
 	)
 	return root
 }

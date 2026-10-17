@@ -1,0 +1,28 @@
+# completion generates a script for every supported shell from the command tree.
+exec specshelf completion bash
+stdout 'bash completion for specshelf'
+stdout 'commands\+=\("list"\)'
+stdout 'commands\+=\("prime"\)'
+stdout 'commands\+=\("export"\)'
+
+exec specshelf completion zsh
+stdout '#compdef specshelf'
+
+exec specshelf completion fish
+stdout 'fish completion for specshelf'
+
+exec specshelf completion powershell
+stdout 'powershell completion for specshelf'
+
+# An unsupported shell is a usage error.
+! exec specshelf completion tcsh
+stderr 'must be bash, zsh, fish, or powershell'
+
+# man writes a roff page for the root command and every subcommand.
+exec specshelf man out
+exists out/specshelf.1
+exists out/specshelf-list.1
+exists out/specshelf-export.1
+exists out/specshelf-completion.1
+grep 'SPECSHELF-LIST' out/specshelf-list.1
+grep 'SPECSHELF' out/specshelf.1
