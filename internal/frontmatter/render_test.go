@@ -199,6 +199,77 @@ func TestMarshalIsIdempotent(t *testing.T) {
 	}
 }
 
+// A rewrite must not blank a document whose metadata lacks id, kind or title:
+// Marshal writes what the accessors read, so the fallback survives the round trip.
+func TestMarshalKeepsFallbackIdentity(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		kind string
+	}{
+		{"spec directory", "specs/2026-10-17-example.md", "spec"},
+		{"decision directory", "decisions/2026-10-17-example.md", "decision"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := Document{Name: tt.path, Metadata: Metadata{}, Body: "body\n"}
+			marshalled := Marshal(before)
+
+			for _, want := range []string{
+				"id: 2026-10-17-example\n",
+				"kind: " + tt.kind + "\n",
+				"title: 2026-10-17-example\n",
+			} {
+				if !strings.Contains(string(marshalled), want) {
+					t.Errorf("marshalled document is missing %q:\n%s", want, marshalled)
+				}
+			}
+
+			after, err := Parse(tt.path, marshalled)
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if after.ID() != before.ID() || after.Kind() != before.Kind() || after.Title() != before.Title() {
+				t.Errorf("a rewrite changed the identity: id %q→%q, kind %q→%q, title %q→%q",
+					before.ID(), after.ID(), before.Kind(), after.Kind(), before.Title(), after.Title())
+			}
+		})
+	}
+}
+
+// A title that is present but empty stays empty: it must not gain the file stem.
+func TestMarshalWritesPresentEmptyTitleAsEmpty(t *testing.T) {
+	doc := Document{Name: "specs/2026-10-17-example.md", Metadata: Metadata{"title": ""}}
+	if got := string(Marshal(doc)); !strings.Contains(got, "title: \"\"\n") {
+		t.Errorf("empty title was not written as title: \"\":\n%s", got)
+	}
+}
+
+// The writer must not emit a key line its own reader misreads: a key beginning
+// "- " is quoted, so the unknown key "- 0" is not read back after the rewrite as
+// an item of the list field before it. This is counterexample 65c2fd0e.
+func TestMarshalQuotesAKeyItsReaderWouldMisread(t *testing.T) {
+	before, err := Parse("specs/fuzz.md", []byte("---\n0\n- 0:\n---\n"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	marshalled := Marshal(before)
+	if !strings.Contains(string(marshalled), `"- 0": []`+"\n") {
+		t.Errorf("the dash-leading key was not quoted:\n%s", marshalled)
+	}
+
+	after, err := Parse("specs/fuzz.md", marshalled)
+	if err != nil {
+		t.Fatalf("re-parsing our own output: %v", err)
+	}
+	if got := after.Metadata["- 0"]; !reflect.DeepEqual(got, []string{}) {
+		t.Errorf(`the unknown key "- 0" did not survive: metadata %#v`, after.Metadata)
+	}
+	if got := after.CodexSessions(); len(got) != 0 {
+		t.Errorf("codex_sessions gained %q", got)
+	}
+}
+
 // Rewriting a document the reference tool wrote must not lose any value — the
 // bytes will differ where we quote or spell things differently, but every field
 // and the whole body have to come back the same.

@@ -26,9 +26,9 @@ func Marshal(doc Document) []byte {
 	b.WriteString("---\n")
 
 	for _, key := range scalarFields {
-		b.WriteString(key)
+		b.WriteString(renderScalar(key))
 		b.WriteString(": ")
-		b.WriteString(renderScalar(scalarValue(doc.Metadata, key)))
+		b.WriteString(renderScalar(scalarValue(doc, key)))
 		b.WriteByte('\n')
 	}
 	for _, key := range listFields {
@@ -39,7 +39,7 @@ func Marshal(doc Document) []byte {
 			writeList(&b, key, items)
 			continue
 		}
-		b.WriteString(key)
+		b.WriteString(renderScalar(key))
 		b.WriteString(": ")
 		b.WriteString(renderScalar(fmt.Sprint(doc.Metadata[key])))
 		b.WriteByte('\n')
@@ -52,14 +52,15 @@ func Marshal(doc Document) []byte {
 
 // writeList writes a block sequence, or an empty flow sequence when there is
 // nothing in it. A bare "key:" would be read as null by a YAML parser, and "[]"
-// is read as an empty list by this package and by the reference tool alike.
+// is read as an empty list by this package and by the reference tool alike. The
+// key is quoted like a value, so a key beginning "- " is not read back as an item.
 func writeList(b *strings.Builder, key string, items []string) {
 	if len(items) == 0 {
-		b.WriteString(key)
+		b.WriteString(renderScalar(key))
 		b.WriteString(": []\n")
 		return
 	}
-	b.WriteString(key)
+	b.WriteString(renderScalar(key))
 	b.WriteString(":\n")
 	for _, item := range items {
 		b.WriteString("  - ")
@@ -183,10 +184,21 @@ func escapeRune(r rune) bool {
 	return false
 }
 
-// scalarValue returns a scalar field as text: its string value, or empty when the
-// field is absent or holds a list, which is the same reading the accessors give.
-func scalarValue(metadata Metadata, key string) string {
-	text, _ := metadata[key].(string)
+// scalarValue returns the scalar field as text, which is what the accessors
+// read: for id, kind and title that is the accessor itself, so a rewrite cannot
+// blank a document whose metadata lacks one — a document that had no id gains
+// the name-derived id `doctor` reports, not one the codec invents. A title that
+// is present but empty stays empty, because that is what Title() returns.
+func scalarValue(doc Document, key string) string {
+	switch key {
+	case "id":
+		return doc.ID()
+	case "kind":
+		return doc.Kind()
+	case "title":
+		return doc.Title()
+	}
+	text, _ := doc.Metadata[key].(string)
 	return text
 }
 

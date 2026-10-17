@@ -139,6 +139,18 @@ func checkReadsBackAsWritten(t *testing.T, mapping *yaml.Node, metadata Metadata
 		want := ""
 		if raw, ok := metadata[key]; ok {
 			want = fmt.Sprint(raw)
+		} else {
+			// id, kind and title are written from the accessors, which fall back
+			// when the metadata has no such key (an absent kind is a spec here).
+			doc := Document{Metadata: metadata}
+			switch key {
+			case "id":
+				want = doc.ID()
+			case "kind":
+				want = doc.Kind()
+			case "title":
+				want = doc.Title()
+			}
 		}
 		if value.Value != want {
 			t.Errorf("%s reads back as %q, want %q", key, value.Value, want)

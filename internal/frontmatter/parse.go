@@ -20,7 +20,7 @@ type Metadata map[string]any
 //   - a line without a separator does not close an open list, while a line with
 //     a separator and a value does
 //   - an empty value opens a list ("key:" and "key: []" alike), and a
-//     well-formed quoted value is unquoted
+//     well-formed quoted value or key is unquoted
 //
 // Line endings must already be normalised, which is what splitFrontmatter does.
 // A repeated key keeps its last value, and an item with no open key is ignored.
@@ -41,12 +41,11 @@ func parseBlock(raw string) Metadata {
 			}
 			continue
 		}
-		key, value, ok := strings.Cut(line, ":")
+		key, value, ok := splitKeyValue(line)
 		if !ok {
 			continue
 		}
-		key = strings.TrimSpace(key)
-		value = strings.TrimSpace(value)
+		key = unquote(key)
 		switch value {
 		case "", "[]":
 			metadata[key] = []string{}
@@ -57,6 +56,36 @@ func parseBlock(raw string) Metadata {
 		}
 	}
 	return metadata
+}
+
+// splitKeyValue splits a line into its key and value at the colon that separates
+// them, trimming both. A key the writer emitted quoted ends at its closing quote,
+// so a quoted key holding ": " splits where it was written, not inside its quotes.
+func splitKeyValue(line string) (key, value string, ok bool) {
+	if strings.HasPrefix(line, `"`) {
+		if end := closingQuote(line); end > 0 && end+1 < len(line) && line[end+1] == ':' {
+			return strings.TrimSpace(line[:end+1]), strings.TrimSpace(line[end+2:]), true
+		}
+	}
+	key, value, ok = strings.Cut(line, ":")
+	return strings.TrimSpace(key), strings.TrimSpace(value), ok
+}
+
+// closingQuote returns the index of the quote that closes a double-quoted token
+// at the start of line, or -1 when there is none.
+func closingQuote(line string) int {
+	escaped := false
+	for i := 1; i < len(line); i++ {
+		switch {
+		case escaped:
+			escaped = false
+		case line[i] == '\\':
+			escaped = true
+		case line[i] == '"':
+			return i
+		}
+	}
+	return -1
 }
 
 // listItem reports whether line is a list item and returns its trimmed value.
