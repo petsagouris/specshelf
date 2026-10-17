@@ -57,20 +57,6 @@ func filterValues(cmd *cobra.Command) (vault.Filters, error) {
 	return vault.Filters{Kind: kind, Repo: repo, Tag: tag, CodexSession: session, Status: status}, nil
 }
 
-// checkFormat rejects the --format values whose rendering arrives with 4.3. tsv
-// is the reference default and the only one this task implements; the colour
-// rule keys off it, because every format but table is a machine payload.
-func checkFormat(cmd *cobra.Command) error {
-	format, err := cmd.Flags().GetString("format")
-	if err != nil {
-		return err
-	}
-	if format != "tsv" {
-		return usagef("invalid argument %q for \"--format\" flag: must be tsv", format)
-	}
-	return nil
-}
-
 // printWarnings writes one stderr line per skipped document.
 func printWarnings(cmd *cobra.Command, warnings []vault.Warning) {
 	for _, warning := range warnings {
@@ -78,8 +64,8 @@ func printWarnings(cmd *cobra.Command, warnings []vault.Warning) {
 	}
 }
 
-// newListCommand lists documents as the reference tool's nine-column TSV, or as
-// JSONL with --json.
+// newListCommand lists documents as the reference tool's nine-column TSV (the
+// default), or in the table, csv or jsonl format the --format flag selects.
 func newListCommand() *cobra.Command {
 	var limit int
 	var jsonOut bool
@@ -93,7 +79,8 @@ func newListCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := checkFormat(cmd); err != nil {
+			format, err := checkFormat(cmd, jsonOut)
+			if err != nil {
 				return err
 			}
 			filters, err := filterValues(cmd)
@@ -106,34 +93,23 @@ func newListCommand() *cobra.Command {
 			}
 			printWarnings(cmd, warnings)
 			records = limitRecords(records, limit)
-
-			out := cmd.OutOrStdout()
-			if jsonOut {
-				_, err = out.Write(vault.EncodeIndex(records))
-				return err
-			}
-			for _, record := range records {
-				if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					record.ID, record.Kind, orDash(record.Status), record.Updated,
-					joinOrDash(record.Repos), joinOrDash(record.Tags), joinOrDash(record.CodexSessions),
-					record.Path, record.Title); err != nil {
-					return err
-				}
-			}
-			return nil
+			return writeList(cmd, format, records)
 		},
 	}
 
 	addFilterFlags(cmd)
 	cmd.Flags().IntVar(&limit, "limit", 50, "Maximum number of documents to list.")
-	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit JSONL records.")
-	cmd.Flags().String("format", "tsv", "Output format: tsv.")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit one JSON object per document, as --format jsonl does.")
+	cmd.Flags().String("format", "tsv", "Output format: tsv, table, csv, or jsonl.")
 	return cmd
 }
 
 // newSearchCommand prints one row per matching document: id, kind, vault relative
-// path, and the matching line's snippet.
+// path with its line, and the matching snippet — as TSV (the default) or in the
+// table, csv or jsonl format the --format flag selects.
 func newSearchCommand() *cobra.Command {
+	var jsonOut bool
+
 	cmd := &cobra.Command{
 		Use:   "search QUERY",
 		Short: "Search specs and decisions.",
@@ -143,7 +119,8 @@ func newSearchCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := checkFormat(cmd); err != nil {
+			format, err := checkFormat(cmd, jsonOut)
+			if err != nil {
 				return err
 			}
 			filters, err := filterValues(cmd)
@@ -155,28 +132,21 @@ func newSearchCommand() *cobra.Command {
 				return err
 			}
 			printWarnings(cmd, warnings)
-
-			out := cmd.OutOrStdout()
-			for _, match := range matches {
-				location := match.Path
-				if match.Line > 0 {
-					location = fmt.Sprintf("%s:%d", match.Path, match.Line)
-				}
-				if _, err := fmt.Fprintf(out, "%s\t%s\t%s\t%s\n", match.ID, match.Kind, location, match.Snippet); err != nil {
-					return err
-				}
-			}
-			return nil
+			return writeSearch(cmd, format, matches)
 		},
 	}
 	addFilterFlags(cmd)
-	cmd.Flags().String("format", "tsv", "Output format: tsv.")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit one JSON object per match, as --format jsonl does.")
+	cmd.Flags().String("format", "tsv", "Output format: tsv, table, csv, or jsonl.")
 	return cmd
 }
 
-// newShowCommand prints one document's raw bytes.
+// newShowCommand prints one document's raw bytes, or its index record with
+// --json.
 func newShowCommand() *cobra.Command {
-	return &cobra.Command{
+	var jsonOut bool
+
+	cmd := &cobra.Command{
 		Use:   "show REF",
 		Short: "Print one spec or decision.",
 		Args:  cobra.ExactArgs(1),
@@ -189,10 +159,20 @@ func newShowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, err = cmd.OutOrStdout().Write(found.Data)
+			if !jsonOut {
+				_, err = cmd.OutOrStdout().Write(found.Data)
+				return err
+			}
+			record, err := indexRecordFor(resolution.Root, found.Path)
+			if err != nil {
+				return err
+			}
+			_, err = cmd.OutOrStdout().Write(vault.EncodeIndex([]vault.IndexRecord{record}))
 			return err
 		},
 	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit the document's index record as JSON.")
+	return cmd
 }
 
 // newPrimeCommand prints a Markdown summary of the matching documents.
@@ -262,9 +242,12 @@ func writePrime(out io.Writer, root string, records []vault.IndexRecord, painter
 	return nil
 }
 
-// newPathCommand prints the resolved vault root.
+// newPathCommand prints the resolved vault root, or the root and the selector
+// level that chose it with --json (design D8).
 func newPathCommand() *cobra.Command {
-	return &cobra.Command{
+	var jsonOut bool
+
+	cmd := &cobra.Command{
 		Use:   "path",
 		Short: "Print the resolved vault directory.",
 		Args:  cobra.NoArgs,
@@ -273,10 +256,15 @@ func newPathCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if jsonOut {
+				return writePathJSON(cmd.OutOrStdout(), resolution)
+			}
 			_, err = cmd.OutOrStdout().Write([]byte(resolution.Root + "\n"))
 			return err
 		},
 	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit the root and the selector that chose it.")
+	return cmd
 }
 
 // limitRecords applies a command's --limit, treating a negative limit as zero,
