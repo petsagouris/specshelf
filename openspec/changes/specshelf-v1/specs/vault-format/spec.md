@@ -60,21 +60,6 @@ reported as an error naming the file.
 - **WHEN** a document written by the Python tool has `title: Decision: use #1 approach`
 - **THEN** the parsed title is exactly `Decision: use #1 approach`
 
-#### Scenario: CRLF line endings
-
-- **WHEN** a document saved with Windows line endings opens with a frontmatter fence
-- **THEN** its metadata is read normally, and a document written back later uses LF endings
-
-#### Scenario: Quoted values are unquoted
-
-- **WHEN** a field carries a single- or double-quoted value, as the writer emits for values that need quoting
-- **THEN** the value is read without its surrounding quotes
-
-#### Scenario: Empty frontmatter block
-
-- **WHEN** the closing fence immediately follows the opening fence
-- **THEN** the document has empty metadata and its body is everything after the fence, rather than being unreadable
-
 #### Scenario: Empty values mean the empty scalar
 
 - **WHEN** a document contains `title:` with nothing after the colon, or `title: []`
@@ -89,6 +74,55 @@ reported as an error naming the file.
 
 - **WHEN** a file begins with `---` and has no closing `---` line
 - **THEN** reading it fails with an error that names the file path
+
+### Requirement: Reader tolerance beyond the reference parser
+
+Where the reference parser mangles or discards a document, the reader SHALL read
+it without losing data: line endings and a byte-order mark are normalised, quoted
+values are unquoted, an empty frontmatter block is readable, list items are
+recognised at any indentation, an intervening line does not close an open list,
+list items with no value are ignored, and values are not truncated at characters
+the reference parser treats as line breaks.
+
+#### Scenario: CRLF line endings
+
+- **WHEN** a document saved with Windows line endings opens with a frontmatter fence
+- **THEN** its metadata is read normally, and a document written back later uses LF endings
+
+#### Scenario: Byte-order mark
+
+- **WHEN** a document opens with a byte-order mark followed by the fence
+- **THEN** the frontmatter is read and the mark does not appear in the body
+
+#### Scenario: Quoted values are unquoted
+
+- **WHEN** a field carries a single- or double-quoted value, as the writer emits for values that need quoting
+- **THEN** the value is read without its surrounding quotes
+
+#### Scenario: Empty frontmatter block
+
+- **WHEN** the closing fence immediately follows the opening fence
+- **THEN** the document has empty metadata and its body is everything after the fence, rather than being unreadable
+
+#### Scenario: List items at any indentation
+
+- **WHEN** list items are indented with more than two spaces, with a tab, or with two spaces
+- **THEN** every item is read
+
+#### Scenario: A line between list items does not close the list
+
+- **WHEN** a line carrying no key separator sits between two list items
+- **THEN** the later item still belongs to the open list
+
+#### Scenario: List items with no value are ignored
+
+- **WHEN** an item is written as a dash with no value
+- **THEN** it is ignored rather than stored as an empty string
+
+#### Scenario: Exotic line separators do not truncate a value
+
+- **WHEN** a value contains a character the reference parser treats as a line break, such as a vertical tab or U+2028
+- **THEN** the value is read whole rather than truncated at that character
 
 ### Requirement: Valid YAML frontmatter writing
 

@@ -223,6 +223,11 @@ a divergence from upstream).
   disabled while it is private, so runtime behaviour on those platforms is
   unverified until it is enabled; the upgrade path pre-emptively refuses to
   self-replace on Windows.
+- **The reader is deliberately more tolerant than the reference parser** → it
+  accepts documents upstream mangles or discards (a byte-order mark, other
+  indentation, exotic line separators, quoting), which means the two tools can
+  report different metadata for the same exotic file. The enumerated divergences
+  and their tests are the enforcement, and `docs/DIVERGENCES.md` is the record.
 - **We emit different bytes than upstream for titles needing quotes** → it is an
   enumerated divergence with its own test, and the Python reader accepts our
   output, so interchange holds in both directions.
