@@ -1,0 +1,7 @@
+specshelf
+Copyright (c) 2026 George Petsagourakis
+
+This product is a Go port of agent-spec-vault
+(https://github.com/xixifast/agent-spec-vault), Copyright (c) 2026 xixifast,
+which is licensed under the MIT License. The upstream licence text is
+reproduced in LICENSE, which carries both copyright notices.

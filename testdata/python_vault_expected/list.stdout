@@ -1,0 +1,10 @@
+spec-20261017-trailing-space	spec	active	2026-10-17	-	-	-	specs/2026-10-17-trailing-space.md	Trailing space
+spec-20261017-quality-analysis-display-contract	spec	active	2026-10-17	lippi-smart-customer,aics-web-repos	quality-analysis,contract	session-a,session-b,session-c	specs/2026-10-17-quality-analysis-display-contract.md	Quality analysis display contract
+spec-20261017-he-said-hi	spec	active	2026-10-17	-	-	-	specs/2026-10-17-he-said-hi.md	He said "hi"
+spec-20261017-fix-42-the-thing	spec	active	2026-10-17	-	-	-	specs/2026-10-17-fix-42-the-thing.md	Fix #42: the thing
+spec-20261017-dash-start	spec	active	2026-10-17	-	-	-	specs/2026-10-17-dash-start.md	- dash start
+spec-20261017-da39a3ee5e	spec	active	2026-10-17	-	-	-	specs/2026-10-17-da39a3ee5e.md	[]
+spec-20261017-bold-start	spec	active	2026-10-17	-	-	-	specs/2026-10-17-bold-start.md	*bold* start
+spec-20261017-992681441c	spec	active	2026-10-17	-	-	-	specs/2026-10-17-992681441c.md	质量分析展示契约
+spec-20261017-1-priority	spec	active	2026-10-17	-	-	-	specs/2026-10-17-1-priority.md	#1 priority
+decision-20261017-use-markdown-vault-instead-of-beads	decision	accepted	2026-10-17	-	tooling,specs	-	decisions/2026-10-17-use-markdown-vault-instead-of-beads.md	Use Markdown vault instead of Beads

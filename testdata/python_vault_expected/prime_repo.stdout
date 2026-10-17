@@ -1,0 +1,11 @@
+# Agent Spec Vault
+
+Vault: `/tmp/opencode/pyspecv/expected_vault`
+
+## Relevant Specs And Decisions
+
+- `spec-20261017-quality-analysis-display-contract` (spec, active) Quality analysis display contract
+  Path: `specs/2026-10-17-quality-analysis-display-contract.md`
+  Repos: lippi-smart-customer, aics-web-repos
+  Tags: quality-analysis, contract
+  Codex sessions: session-a, session-b, session-c

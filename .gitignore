@@ -1,0 +1,13 @@
+# Build output
+/specshelf
+/specshelf.exe
+*.test
+/dist/
+/coverage.out
+/cmd/specshelf/specshelf
+/cmd/specshelf/specshelf.exe
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
