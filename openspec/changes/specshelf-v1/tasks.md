@@ -45,11 +45,11 @@
 - [ ] 3.15 Add the bidirectional interchange tests: a Python-written fixture vault is fully readable by specshelf with no warnings, and the reverse vault is readable by the Python tool inside the conformance suite; verify the default-suite direction passes without Python
 - [ ] 3.16 Document install and quickstart in the README and add a test that runs the documented command sequence against a temporary vault; verify the test fails when a documented command or flag changes
 - [ ] 3.17 Apply the `project` configuration setting: the config spec requires a setting controlling whether project vault discovery is enabled and `docs/CONFIG.md` documents it, but resolution ignores it. Take the kill-switch reading — with discovery disabled an explicit `--project` fails with a typed error naming the setting rather than silently resolving — and test both values
-- [ ] 3.18 Resolve the vault path before printing it: `path` and `init` print the root exactly as resolution produced it, so a relative `--home` prints relative where the reference prints an absolute path. Make the resolved root absolute and verify against the reference with a relative `--home`, keeping the ten recorded oracle invocations byte-identical
+- [x] 3.18 Resolve the vault path before printing it: `path` and `init` print the root exactly as resolution produced it, so a relative `--home` prints relative where the reference prints an absolute path. Make the resolved root absolute and verify against the reference with a relative `--home`, keeping the ten recorded oracle invocations byte-identical
 
 ## 4. M3 — Superset commands
 
-- [ ] 4.1 Implement `edit` (editor resolution, `updated` only on change), `rm` with `--dry-run`, and `status <ref> <status>`; verify tests cover an unchanged edit, a dry-run removal and a status change with the date bump
+- [x] 4.1 Implement `edit` (editor resolution, `updated` only on change), `rm` with `--dry-run`, and `status <ref> <status>`; verify tests cover an unchanged edit, a dry-run removal and a status change with the date bump
 - [ ] 4.2 Implement `export` (JSON and JSONL) with tests asserting every document appears once with index-equivalent fields
 - [ ] 4.3 Implement `--json` on every read command and `--format tsv|table|csv|jsonl` on `list` and `search`; verify tests assert field-name parity with the index record and the default format
 - [ ] 4.4 Implement `completion` for bash, zsh, fish and PowerShell and `man` for the root command and subcommands; verify a CI step sources the bash and zsh completions and generation mentions every command
