@@ -46,6 +46,7 @@
 - [ ] 3.16 Document install and quickstart in the README and add a test that runs the documented command sequence against a temporary vault; verify the test fails when a documented command or flag changes
 - [ ] 3.17 Apply the `project` configuration setting: the config spec requires a setting controlling whether project vault discovery is enabled and `docs/CONFIG.md` documents it, but resolution ignores it. Take the kill-switch reading — with discovery disabled an explicit `--project` fails with a typed error naming the setting rather than silently resolving — and test both values
 - [x] 3.18 Resolve the vault path before printing it: `path` and `init` print the root exactly as resolution produced it, so a relative `--home` prints relative where the reference prints an absolute path. Make the resolved root absolute and verify against the reference with a relative `--home`, keeping the ten recorded oracle invocations byte-identical
+- [ ] 3.19 Confine `rm` to the vault: document references resolve an existing path first, so `rm <path>` deletes whatever file the user names, inside the vault or not, which is a data-loss footgun the reference tool also has. Refuse a resolved document whose path lies outside the resolved vault root with a typed error, and verify both that a document inside the vault still deletes and that a path outside it is refused, with the file left alone
 
 ## 4. M3 — Superset commands
 
