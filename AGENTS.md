@@ -65,6 +65,28 @@ Never point a command at the real vault. Tests use temporary directories.
 `testdata/` holds generated fixtures from the Python reference implementation and
 must not be hand-edited.
 
+## Execution mirror (beads)
+
+`openspec/changes/specshelf-v1/tasks.md` is **authoritative** for scope and
+completion. A beads board mirrors it so execution state — claims, blockers, work
+found mid-task — survives a context reset. The board is project-local
+(`.beads/`), derived, and never committed.
+
+```
+scripts/bd-sync.py            # after editing tasks.md; idempotent, --dry-run supported
+bd ready                      # unblocked work
+bd update <bead-id> --claim   # take a task before starting it
+```
+
+- A bead exists only because a task exists. Work discovered mid-task is recorded
+  in beads *and* added to `tasks.md`; the reverse never happens.
+- Completion is ticked in `tasks.md` first and then mirrored. Never close a bead
+  to mean "done" — that is exactly the drift this rule prevents.
+- Titles are labels truncated to fit; the bead description holds the task text
+  verbatim.
+- The script does not derive task-to-task dependencies, because tasks.md does not
+  record them. Add a real blocker with `bd dep add` when you find one.
+
 ## Parallel work
 
 Independent tasks run in **git worktrees**, one per task, so no agent ever edits
