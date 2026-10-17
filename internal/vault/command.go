@@ -196,11 +196,16 @@ type Editor interface {
 // An editor that changed nothing leaves the file and the index exactly as they
 // were, because nothing on disk changed. Unknown keys, the body, id, kind and
 // created are the editor's to keep: the rewrite re-reads the file and re-emits
-// it through the shared writer.
+// it through the shared writer. A resolved document outside the vault root is
+// refused with an OutsideVaultError before the editor runs, so a reference that
+// names an arbitrary path cannot rewrite a file the vault does not own.
 func Edit(root, ref string, editor Editor) (string, error) {
 	found, err := Find(root, ref)
 	if err != nil {
 		return "", err
+	}
+	if !withinVault(root, found.Path) {
+		return "", &OutsideVaultError{Path: found.Path, Root: root}
 	}
 	if err := editor.Edit(found.Path); err != nil {
 		return "", err
@@ -230,10 +235,16 @@ func Edit(root, ref string, editor Editor) (string, error) {
 
 // SetStatus sets the document's frontmatter status, stamps updated with today's
 // date, rewrites it atomically and refreshes the index. It returns the path.
+// A resolved document outside the vault root is refused with an OutsideVaultError
+// and left alone, because reference resolution tries an existing path first and
+// would otherwise rewrite any file the user names.
 func SetStatus(root, ref, status string) (string, error) {
 	doc, err := ResolveReference(root, ref)
 	if err != nil {
 		return "", err
+	}
+	if !withinVault(root, doc.Name) {
+		return "", &OutsideVaultError{Path: doc.Name, Root: root}
 	}
 	metadata := copyMetadata(doc.Metadata)
 	metadata["status"] = status
