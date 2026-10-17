@@ -58,6 +58,9 @@ func TestParseBlock(t *testing.T) {
 		{"item values are trimmed", "tags:\n  -   padded   ", Metadata{"tags": []string{"padded"}}},
 		{"an item value with a hash", "tags:\n  - fix #42", Metadata{"tags": []string{"fix #42"}}},
 		{"an item value that looks like an item", "tags:\n  - - inner", Metadata{"tags": []string{"- inner"}}},
+		{"a quoted item is unquoted", "tags:\n  - \"a #b\"\n  - \"true\"", Metadata{"tags": []string{"a #b", "true"}}},
+		{"a quoted numeric item is unquoted", "tags:\n  - \"123\"", Metadata{"tags": []string{"123"}}},
+		{"an explicitly empty quoted item survives", "tags:\n  - \"\"", Metadata{"tags": []string{""}}},
 
 		{"a repeated key keeps the last value", "title: first\ntitle: second", Metadata{"title": "second"}},
 		{"a scalar replaces an earlier list", "x: scalar\nx:\n  - a\n  - b", Metadata{"x": []string{"a", "b"}}},

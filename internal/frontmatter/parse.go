@@ -30,9 +30,11 @@ func parseBlock(raw string) Metadata {
 			continue
 		}
 		if item, ok := listItem(line); ok && listKey != "" {
+			// An item with no text at all is ignored, but an explicitly empty
+			// quoted item is a value the writer emitted and has to survive.
 			if item != "" {
 				items, _ := metadata[listKey].([]string)
-				metadata[listKey] = append(items, item)
+				metadata[listKey] = append(items, unquote(item))
 			}
 			continue
 		}
@@ -107,17 +109,30 @@ func hasUnescaped(s string, quote byte) bool {
 	return false
 }
 
-// unescapeDouble resolves the two escapes the writer emits inside a double
-// quoted value: \\ and \".
+// unescapeDouble resolves the escapes the writer emits inside a double quoted
+// value: \\, \", \n, \r and \t. Any other escape is left as written, so a
+// hand-written value is not silently reinterpreted.
 func unescapeDouble(inner string) string {
 	var b strings.Builder
 	for i := 0; i < len(inner); i++ {
-		if inner[i] == '\\' && i+1 < len(inner) && (inner[i+1] == '\\' || inner[i+1] == '"') {
-			b.WriteByte(inner[i+1])
-			i++
+		if inner[i] != '\\' || i+1 >= len(inner) {
+			b.WriteByte(inner[i])
 			continue
 		}
-		b.WriteByte(inner[i])
+		switch inner[i+1] {
+		case '\\', '"':
+			b.WriteByte(inner[i+1])
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		default:
+			b.WriteByte(inner[i])
+			b.WriteByte(inner[i+1])
+		}
+		i++
 	}
 	return b.String()
 }
