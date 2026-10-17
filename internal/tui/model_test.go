@@ -17,9 +17,18 @@ type fakeStore struct {
 	err      error
 	content  map[string]string
 	findErr  error
+	editErr  error
 
 	lists int
 	finds int
+	edits int
+
+	creates     int
+	lastCreate  vault.NewDocument
+	statusCalls int
+	lastStatus  string
+	removes     int
+	lastRemove  string
 }
 
 func (f *fakeStore) List() ([]vault.IndexRecord, []vault.Warning, error) {
@@ -33,6 +42,41 @@ func (f *fakeStore) Find(ref string) (vault.Found, error) {
 		return vault.Found{}, f.findErr
 	}
 	return vault.Found{Path: ref, Data: []byte(f.content[ref])}, nil
+}
+
+func (f *fakeStore) Edit(ref string) (string, error) {
+	f.edits++
+	if f.editErr != nil {
+		return "", f.editErr
+	}
+	return ref, nil
+}
+
+func (f *fakeStore) Create(in vault.NewDocument) (string, error) {
+	f.creates++
+	f.lastCreate = in
+	if f.err != nil {
+		return "", f.err
+	}
+	return "created.md", nil
+}
+
+func (f *fakeStore) SetStatus(ref, status string) (string, error) {
+	f.statusCalls++
+	f.lastStatus = status
+	if f.err != nil {
+		return "", f.err
+	}
+	return ref, nil
+}
+
+func (f *fakeStore) Remove(ref string) (string, error) {
+	f.removes++
+	f.lastRemove = ref
+	if f.err != nil {
+		return "", f.err
+	}
+	return ref, nil
 }
 
 func sampleRecords() []vault.IndexRecord {

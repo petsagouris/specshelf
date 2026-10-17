@@ -17,6 +17,8 @@ const (
 	modeDetail
 	modeCreate
 	modeHelp
+	modeStatus
+	modeConfirm
 )
 
 // loadedMsg is the result of one List call: the documents, the warnings for the
@@ -32,6 +34,31 @@ type detailMsg struct {
 	ref     string
 	content string
 	err     error
+}
+
+// editedMsg is the result of handing the open document to the editor.
+type editedMsg struct {
+	ref string
+	err error
+}
+
+// createdMsg is the result of creating a document from the create prompt.
+type createdMsg struct {
+	path string
+	err  error
+}
+
+// statusMsg is the result of setting the open document's status.
+type statusMsg struct {
+	ref    string
+	status string
+	err    error
+}
+
+// deletedMsg is the result of removing the open document.
+type deletedMsg struct {
+	ref string
+	err error
 }
 
 // Model is the interactive session's state and its three views plus help.
@@ -59,6 +86,15 @@ type Model struct {
 	// createKind and createTitle are the create prompt's captured input.
 	createKind  string
 	createTitle string
+
+	// statusRef and statusValue are the status prompt's target and captured
+	// input.
+	statusRef   string
+	statusValue string
+
+	// confirmRef is the document a pending deletion names. A deletion happens
+	// only after the confirmation view is answered with y.
+	confirmRef string
 
 	// Create is the request the create prompt submitted. It is kept so 5.4 can
 	// route it through the store; the prompt itself does not mutate the vault.
@@ -104,6 +140,42 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	case editedMsg:
+		// The store already stamped updated and refreshed the index; reload the
+		// list and re-read the document so the session shows the editor's work.
+		if msg.err != nil {
+			m.err = msg.err
+			if msg.ref == m.detailRef {
+				m.detail = "error: " + msg.err.Error()
+			}
+			return m, nil
+		}
+		m.err = nil
+		return m, tea.Batch(m.loadCmd(), m.detailCmd(msg.ref))
+	case createdMsg:
+		m.err = msg.err
+		if msg.err != nil {
+			return m, nil
+		}
+		m.Create = nil
+		return m, m.loadCmd()
+	case statusMsg:
+		if msg.err != nil {
+			m.err = msg.err
+			if msg.ref == m.detailRef {
+				m.detail = "error: " + msg.err.Error()
+			}
+			return m, nil
+		}
+		m.err = nil
+		return m, tea.Batch(m.loadCmd(), m.detailCmd(msg.ref))
+	case deletedMsg:
+		if msg.err != nil {
+			m.err = msg.err
+			return m, nil
+		}
+		m.err = nil
+		return m, m.loadCmd()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if msg.Width <= 0 && msg.Height <= 0 {
@@ -127,6 +199,10 @@ func (m *Model) View() tea.View {
 		content = m.renderDetail()
 	case modeCreate:
 		content = m.renderCreate()
+	case modeStatus:
+		content = m.renderStatus()
+	case modeConfirm:
+		content = m.renderConfirm()
 	case modeHelp:
 		content = m.renderHelp()
 	default:
@@ -145,6 +221,10 @@ func (m *Model) handleKey(key tea.KeyPressMsg) tea.Cmd {
 		return m.handleDetailKey(key)
 	case modeCreate:
 		return m.handleCreateKey(key)
+	case modeStatus:
+		return m.handleStatusKey(key)
+	case modeConfirm:
+		return m.handleConfirmKey(key)
 	case modeHelp:
 		return m.handleHelpKey(key)
 	default:
@@ -221,6 +301,61 @@ func (m *Model) handleDetailKey(key tea.KeyPressMsg) tea.Cmd {
 		return tea.Quit
 	case "esc":
 		m.mode = modeList
+	case "e":
+		return m.editCmd()
+	case "s":
+		m.statusRef = m.detailRef
+		m.statusValue = ""
+		m.mode = modeStatus
+	case "d":
+		m.confirmRef = m.detailRef
+		m.mode = modeConfirm
+	}
+	return nil
+}
+
+// handleConfirmKey answers the delete confirmation. Only y removes the
+// document; esc and n cancel and leave it in place.
+func (m *Model) handleConfirmKey(key tea.KeyPressMsg) tea.Cmd {
+	switch key.String() {
+	case "ctrl+c":
+		m.quitting = true
+		return tea.Quit
+	case "y":
+		return m.deleteCmd()
+	case "n", "esc":
+		m.mode = modeDetail
+	}
+	return nil
+}
+
+// handleStatusKey edits the status prompt. Enter applies the typed status
+// through the store; esc leaves the document alone.
+func (m *Model) handleStatusKey(key tea.KeyPressMsg) tea.Cmd {
+	switch key.String() {
+	case "ctrl+c":
+		m.quitting = true
+		return tea.Quit
+	case "esc":
+		m.mode = modeDetail
+	case "backspace":
+		m.statusValue = dropLastRune(m.statusValue)
+	case "enter":
+		ref := m.statusRef
+		status := strings.TrimSpace(m.statusValue)
+		m.mode = modeDetail
+		store := m.store
+		if store == nil || status == "" {
+			return nil
+		}
+		return func() tea.Msg {
+			_, err := store.SetStatus(ref, status)
+			return statusMsg{ref: ref, status: status, err: err}
+		}
+	default:
+		if key.Text != "" {
+			m.statusValue += key.Text
+		}
 	}
 	return nil
 }
@@ -252,10 +387,17 @@ func (m *Model) handleCreateKey(key tea.KeyPressMsg) tea.Cmd {
 	case "backspace":
 		m.createTitle = dropLastRune(m.createTitle)
 	case "enter":
-		// 5.4 attaches here: the store gains a Create method and this request
-		// is handed to it; until then the prompt only captures it.
-		m.Create = &vault.NewDocument{Kind: m.createKind, Title: strings.TrimSpace(m.createTitle)}
+		in := vault.NewDocument{Kind: m.createKind, Title: strings.TrimSpace(m.createTitle)}
+		m.Create = &in
 		m.mode = modeList
+		store := m.store
+		if store == nil || in.Title == "" {
+			return nil
+		}
+		return func() tea.Msg {
+			path, err := store.Create(in)
+			return createdMsg{path: path, err: err}
+		}
 	default:
 		if key.Text != "" {
 			m.createTitle += key.Text
@@ -274,16 +416,53 @@ func (m *Model) openDetail() tea.Cmd {
 	m.detailRef = ref
 	m.detail = ""
 	m.mode = modeDetail
+	return m.detailCmd(ref)
+}
+
+// detailCmd fetches one document's bytes through the store. It is the only
+// source of the detail view's content, so a reload re-reads through it too.
+func (m *Model) detailCmd(ref string) tea.Cmd {
 	store := m.store
+	if store == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		if store == nil {
-			return detailMsg{ref: ref}
-		}
 		found, err := store.Find(ref)
 		if err != nil {
 			return detailMsg{ref: ref, err: err}
 		}
 		return detailMsg{ref: ref, content: string(found.Data)}
+	}
+}
+
+// editCmd hands the open document to the store's editor. The store re-reads the
+// document after the editor exits and refreshes the index; the session reloads
+// on the resulting message.
+func (m *Model) editCmd() tea.Cmd {
+	ref := m.detailRef
+	store := m.store
+	if store == nil || ref == "" {
+		return nil
+	}
+	return func() tea.Msg {
+		_, err := store.Edit(ref)
+		return editedMsg{ref: ref, err: err}
+	}
+}
+
+// deleteCmd removes the open document through the store and returns to the
+// list. The store refreshes the index; deletedMsg then reloads the list.
+func (m *Model) deleteCmd() tea.Cmd {
+	ref := m.detailRef
+	store := m.store
+	if store == nil || ref == "" {
+		return nil
+	}
+	m.mode = modeList
+	m.detailRef = ""
+	return func() tea.Msg {
+		_, err := store.Remove(ref)
+		return deletedMsg{ref: ref, err: err}
 	}
 }
 
@@ -410,6 +589,29 @@ func (m *Model) renderCreate() string {
 		"title: " + m.createTitle + "_",
 		"",
 		"enter create · esc cancel · q quit",
+	}, m.width)
+}
+
+func (m *Model) renderStatus() string {
+	return frame([]string{
+		"Set status",
+		"",
+		"document: " + m.statusRef,
+		"status:   " + m.statusValue + "_",
+		"",
+		"enter apply · esc cancel",
+	}, m.width)
+}
+
+func (m *Model) renderConfirm() string {
+	name := m.confirmRef
+	if record, ok := m.recordFor(m.confirmRef); ok {
+		name = record.Title
+	}
+	return frame([]string{
+		"Delete " + name + "?",
+		"",
+		"y confirm · esc cancel",
 	}, m.width)
 }
 
