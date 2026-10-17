@@ -2,6 +2,8 @@ package vault
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -300,6 +302,79 @@ func TestRemoveDeletesAndRefreshesIndex(t *testing.T) {
 	if _, err := Remove(root, "2026-10-17-note"); err == nil {
 		t.Error("Remove of an unknown reference succeeded, want an error")
 	}
+}
+
+// Remove is confined to the vault. Reference resolution tries an existing path
+// first, so without a check `rm <path>` deletes any file the user names; a
+// resolved document outside the root is refused with a typed error and left
+// alone, while one inside still deletes.
+func TestRemoveConfinement(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "vault")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const doc = "---\nid: spec-20261017-note\nkind: spec\ntitle: Note\n---\n# Note\n"
+
+	t.Run("a document inside the vault still deletes", func(t *testing.T) {
+		inside := filepath.Join(root, "specs", "2026-10-17-note.md")
+		if err := os.MkdirAll(filepath.Dir(inside), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(inside, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got, err := Remove(root, "spec-20261017-note")
+		if err != nil {
+			t.Fatalf("Remove: %v", err)
+		}
+		if got != inside {
+			t.Errorf("Remove returned %q, want %q", got, inside)
+		}
+		if _, err := os.Stat(inside); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s still exists after Remove: %v", inside, err)
+		}
+	})
+
+	t.Run("a path outside the vault is refused and left alone", func(t *testing.T) {
+		outside := filepath.Join(t.TempDir(), "outside.md")
+		if err := os.WriteFile(outside, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Remove(root, outside)
+		var outsideErr *OutsideVaultError
+		if !errors.As(err, &outsideErr) {
+			t.Fatalf("Remove error = %v, want *OutsideVaultError", err)
+		}
+		if outsideErr.Path != outside || !strings.Contains(err.Error(), outside) {
+			t.Errorf("error %q must name the path %s", err.Error(), outside)
+		}
+		if !strings.Contains(err.Error(), root) {
+			t.Errorf("error %q must name the root %s", err.Error(), root)
+		}
+		if _, statErr := os.Stat(outside); statErr != nil {
+			t.Errorf("%s was removed despite being outside the vault: %v", outside, statErr)
+		}
+	})
+
+	t.Run("a symlinked directory escaping the vault is refused", func(t *testing.T) {
+		target := t.TempDir()
+		link := filepath.Join(root, "escape")
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		escaping := filepath.Join(link, "outside.md")
+		if err := os.WriteFile(escaping, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Remove(root, escaping)
+		var outsideErr *OutsideVaultError
+		if !errors.As(err, &outsideErr) {
+			t.Fatalf("Remove error = %v, want *OutsideVaultError", err)
+		}
+		if _, statErr := os.Stat(escaping); statErr != nil {
+			t.Errorf("%s was removed through a symlinked directory: %v", escaping, statErr)
+		}
+	})
 }
 
 func readID(t *testing.T, path string) string {

@@ -78,6 +78,18 @@ func (e *NoProjectVaultError) Error() string {
 	return fmt.Sprintf("no project vault: no .specshelf directory found from %s", e.Start)
 }
 
+// ProjectDisabledError reports an explicit --project while the configuration
+// disables project vault discovery through its project setting. It names the
+// setting, and resolution refuses rather than falling back to another vault, so
+// a caller can map the setting to its own message. The command surface decides
+// the exit code; like ConflictError it reports an explicit selector that cannot
+// be honoured.
+type ProjectDisabledError struct{}
+
+func (e *ProjectDisabledError) Error() string {
+	return "--project is disabled by the project setting in the configuration"
+}
+
 // defaultVault is the vault used when nothing else selects one, relative to home.
 const defaultVault = ".agents/spec-vault"
 
@@ -86,7 +98,8 @@ const defaultVault = ".agents/spec-vault"
 // file, --project, the configuration file's default vault, and
 // ~/.agents/spec-vault. home is the user's home directory and bounds the project
 // walk; the configuration file is read from config.Path(). Two explicit
-// selectors are a ConflictError.
+// selectors are a ConflictError; an explicit --project with the configuration's
+// project setting false is a ProjectDisabledError.
 func Resolve(sel Selectors, home string) (Resolution, error) {
 	if err := checkConflicts(sel); err != nil {
 		return Resolution{}, err
@@ -113,6 +126,9 @@ func Resolve(sel Selectors, home string) (Resolution, error) {
 		}
 		res.Root, res.Source = root, SourceVault
 	case sel.Project:
+		if file.Project != nil && !*file.Project {
+			return Resolution{}, &ProjectDisabledError{}
+		}
 		root, err := Discover(sel.Dir, home)
 		if err != nil {
 			return Resolution{}, err

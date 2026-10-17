@@ -250,10 +250,16 @@ func SetStatus(root, ref, status string) (string, error) {
 
 // Remove deletes the document ref names and refreshes the index, which is
 // written atomically like every other refresh. It returns the path it removed.
+// A reference that resolves to a path outside the vault root is refused with an
+// OutsideVaultError and left alone, because reference resolution tries an
+// existing path first and would otherwise delete any file the user names.
 func Remove(root, ref string) (string, error) {
 	doc, err := ResolveReference(root, ref)
 	if err != nil {
 		return "", err
+	}
+	if !withinVault(root, doc.Name) {
+		return "", &OutsideVaultError{Path: doc.Name, Root: root}
 	}
 	if err := os.Remove(doc.Name); err != nil {
 		return "", fmt.Errorf("remove %s: %w", doc.Name, err)

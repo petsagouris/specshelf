@@ -183,6 +183,52 @@ func TestResolveConflictPrecedesConfig(t *testing.T) {
 	}
 }
 
+// The config project setting is a kill switch for the --project level: unset
+// means enabled as before, false refuses an explicit --project with a typed
+// error naming the setting instead of resolving another vault.
+func TestResolveProjectSetting(t *testing.T) {
+	home := t.TempDir()
+	project := filepath.Join(home, "work", "project")
+	marker := filepath.Join(project, ".specshelf")
+	if err := os.MkdirAll(marker, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(project, "internal", "vault")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("unset leaves project discovery enabled", func(t *testing.T) {
+		t.Setenv("SPECSHELF_HOME", "")
+		configFile(t, "default_vault = \"/from-config\"\n")
+		res, err := Resolve(Selectors{Project: true, Dir: dir}, home)
+		assertResolved(t, res, err, marker, SourceProject)
+	})
+
+	t.Run("false refuses an explicit --project", func(t *testing.T) {
+		t.Setenv("SPECSHELF_HOME", "")
+		configFile(t, "project = false\ndefault_vault = \"/from-config\"\n")
+		res, err := Resolve(Selectors{Project: true, Dir: dir}, home)
+		var disabled *ProjectDisabledError
+		if !errors.As(err, &disabled) {
+			t.Fatalf("Resolve error = %v, want *ProjectDisabledError", err)
+		}
+		if res.Root != "" || res.Source != "" {
+			t.Errorf("Resolve = %+v, want the zero resolution and no fallback", res)
+		}
+		if !strings.Contains(err.Error(), "project") {
+			t.Errorf("error %q must name the project setting", err.Error())
+		}
+	})
+
+	t.Run("false leaves the other selectors alone", func(t *testing.T) {
+		t.Setenv("SPECSHELF_HOME", "")
+		configFile(t, "project = false\ndefault_vault = \"/from-config\"\n")
+		res, err := Resolve(Selectors{}, home)
+		assertResolved(t, res, err, "/from-config", SourceConfig)
+	})
+}
+
 func TestResolveUnknownVault(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("SPECSHELF_HOME", "")
