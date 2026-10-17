@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -299,4 +300,133 @@ func initDirs(t *testing.T, py pythonTool) (string, string) {
 		t.Fatalf("reference init exited %d: %s", got.code, got.stderr)
 	}
 	return ourHome, pyHome
+}
+
+// TestSpecshelfWrittenVaultReadableByPython is the reverse direction of
+// bidirectional interchange: a vault specshelf wrote is listed, shown and
+// searched by the Python tool with its metadata intact.
+func TestSpecshelfWrittenVaultReadableByPython(t *testing.T) {
+	py := requirePython(t)
+	home := t.TempDir()
+
+	for _, args := range [][]string{
+		{"init"},
+		{"new", "Mixed authorship from specshelf", "--tags", "alpha,beta"},
+		{"decision", "Adopt Markdown vault", "--status", "accepted", "--tags", "tooling"},
+	} {
+		if got := runSpecshelf(t, home, args...); got.code != 0 {
+			t.Fatalf("specshelf %v exited %d: %s", args, got.code, got.stderr)
+		}
+	}
+
+	// The id embeds the current date, so the expectations are keyed by title
+	// and specshelf's own listing supplies the ids to compare and to show.
+	want := map[string]struct {
+		kind string
+		tags []string
+	}{
+		"Mixed authorship from specshelf": {"spec", []string{"alpha", "beta"}},
+		"Adopt Markdown vault":            {"decision", []string{"tooling"}},
+	}
+	ourRecords := parseRecords(t, runSpecshelf(t, home, "list", "--json").stdout)
+	if len(ourRecords) != len(want) {
+		t.Fatalf("specshelf listed %d documents, want %d", len(ourRecords), len(want))
+	}
+	for _, record := range ourRecords {
+		expected, ok := want[record.Title]
+		if !ok {
+			t.Errorf("specshelf wrote an unexpected document %q", record.Title)
+			continue
+		}
+		if record.Kind != expected.kind || !slices.Equal(record.Tags, expected.tags) {
+			t.Errorf("specshelf read %q back as kind %q tags %q, want kind %q tags %q",
+				record.Title, record.Kind, record.Tags, expected.kind, expected.tags)
+		}
+	}
+
+	listed := py.run(t, home, "list", "--json")
+	if listed.code != 0 {
+		t.Fatalf("reference list exited %d: %s", listed.code, listed.stderr)
+	}
+	if len(listed.stderr) != 0 {
+		t.Errorf("reference list stderr = %q, want empty", listed.stderr)
+	}
+	theirs := parseRecords(t, listed.stdout)
+	if len(theirs) != len(ourRecords) {
+		t.Fatalf("the reference listed %d documents, want %d", len(theirs), len(ourRecords))
+	}
+	byID := make(map[string]indexRecord, len(theirs))
+	for _, record := range theirs {
+		byID[record.ID] = record
+	}
+	for _, our := range ourRecords {
+		record, ok := byID[our.ID]
+		if !ok {
+			t.Errorf("the reference does not see %q (id %q)", our.Title, our.ID)
+			continue
+		}
+		if record.Kind != our.Kind || record.Title != our.Title || !slices.Equal(record.Tags, our.Tags) {
+			t.Errorf("%s: the reference read %+v, want %+v", our.ID, record, our)
+		}
+	}
+
+	for _, record := range ourRecords {
+		shown := py.run(t, home, "show", record.ID)
+		if shown.code != 0 {
+			t.Errorf("reference show %s exited %d: %s", record.ID, shown.code, shown.stderr)
+		}
+		if !bytes.Contains(shown.stdout, []byte("# ")) {
+			t.Errorf("reference show %s: output does not look like a document:\n%q", record.ID, shown.stdout)
+		}
+	}
+
+	found := py.run(t, home, "search", "Mixed")
+	if found.code != 0 {
+		t.Errorf("reference search exited %d: %s", found.code, found.stderr)
+	}
+	if !bytes.Contains(found.stdout, []byte("Mixed authorship from specshelf")) {
+		t.Errorf("reference search output does not contain the document:\n%q", found.stdout)
+	}
+}
+
+// TestMixedAuthorship has both tools add documents to the same vault and checks
+// that each sees the other's documents and neither writes a file the other
+// cannot read.
+func TestMixedAuthorship(t *testing.T) {
+	py := requirePython(t)
+	home := t.TempDir()
+
+	if got := runSpecshelf(t, home, "init"); got.code != 0 {
+		t.Fatalf("specshelf init exited %d: %s", got.code, got.stderr)
+	}
+	if got := runSpecshelf(t, home, "new", "Specshelf wrote this"); got.code != 0 {
+		t.Fatalf("specshelf new exited %d: %s", got.code, got.stderr)
+	}
+	added := py.run(t, home, "new", "Python wrote this")
+	if added.code != 0 {
+		t.Fatalf("reference new exited %d: %s", added.code, added.stderr)
+	}
+
+	ours := runSpecshelf(t, home, "list", "--json")
+	if ours.code != 0 {
+		t.Fatalf("specshelf list exited %d: %s", ours.code, ours.stderr)
+	}
+	theirs := py.run(t, home, "list", "--json")
+	if theirs.code != 0 {
+		t.Fatalf("reference list exited %d: %s", theirs.code, theirs.stderr)
+	}
+	for _, record := range []struct {
+		tool  string
+		title string
+		out   []byte
+	}{
+		{"specshelf", "Specshelf wrote this", ours.stdout},
+		{"specshelf", "Python wrote this", ours.stdout},
+		{"python", "Specshelf wrote this", theirs.stdout},
+		{"python", "Python wrote this", theirs.stdout},
+	} {
+		if !bytes.Contains(record.out, []byte(record.title)) {
+			t.Errorf("%s does not see the document %q", record.tool, record.title)
+		}
+	}
 }

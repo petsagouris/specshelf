@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -120,6 +122,132 @@ func tolerateEmptyScalarTitle(t *testing.T, label string, b []byte) []byte {
 	default:
 		return b
 	}
+}
+
+// TestPythonWrittenVaultReadsWithoutWarnings is the default-suite direction of
+// bidirectional interchange: a vault written only by the Python tool is listed,
+// searched and shown by specshelf with its metadata intact and no warning on
+// stderr. It needs no Python.
+func TestPythonWrittenVaultReadsWithoutWarnings(t *testing.T) {
+	home := t.TempDir()
+	copyTree(t, fixtureVault, home)
+
+	want := parseRecords(t, readFixture(t, filepath.Join(fixtureVault, "index.jsonl")))
+	if len(want) != 10 {
+		t.Fatalf("the fixture index lists %d documents, want 10", len(want))
+	}
+
+	t.Run("list --json", func(t *testing.T) {
+		got := runSpecshelf(t, home, "list", "--json")
+		if got.code != 0 {
+			t.Errorf("exit code = %d, want 0", got.code)
+		}
+		if len(got.stderr) != 0 {
+			t.Errorf("stderr = %q, want empty (no warnings)", got.stderr)
+		}
+		records := parseRecords(t, got.stdout)
+		if len(records) != len(want) {
+			t.Fatalf("listed %d documents, want %d", len(records), len(want))
+		}
+		byID := make(map[string]indexRecord, len(records))
+		for _, record := range records {
+			byID[record.ID] = record
+		}
+		for _, expected := range want {
+			record, ok := byID[expected.ID]
+			if !ok {
+				t.Errorf("document %q is missing", expected.ID)
+				continue
+			}
+			// The one enumerated divergence: the reference records an empty
+			// scalar title as the text "[]", specshelf records it as empty.
+			if expected.Title == "[]" {
+				expected.Title = ""
+			}
+			if !sameRecord(record, expected) {
+				t.Errorf("%s: metadata = %+v, want %+v", expected.ID, record, expected)
+			}
+		}
+	})
+
+	t.Run("show every document", func(t *testing.T) {
+		for _, expected := range want {
+			got := runSpecshelf(t, home, "show", expected.ID)
+			if got.code != 0 {
+				t.Errorf("show %s: exit code = %d, want 0", expected.ID, got.code)
+			}
+			if len(got.stderr) != 0 {
+				t.Errorf("show %s: stderr = %q, want empty", expected.ID, got.stderr)
+			}
+			if !bytes.HasPrefix(got.stdout, []byte("---\n")) || !bytes.Contains(got.stdout, []byte("# ")) {
+				t.Errorf("show %s: output does not look like a document:\n%q", expected.ID, got.stdout)
+			}
+		}
+	})
+
+	t.Run("search reaches every document", func(t *testing.T) {
+		// Every document's body carries an "## " heading, so this finds all of
+		// them without relying on any one template's section names.
+		got := runSpecshelf(t, home, "search", "##")
+		if got.code != 0 {
+			t.Errorf("exit code = %d, want 0", got.code)
+		}
+		if len(got.stderr) != 0 {
+			t.Errorf("stderr = %q, want empty", got.stderr)
+		}
+		found := map[string]bool{}
+		for _, line := range strings.Split(strings.TrimSuffix(string(got.stdout), "\n"), "\n") {
+			if id, _, ok := strings.Cut(line, "\t"); ok {
+				found[id] = true
+			}
+		}
+		for _, expected := range want {
+			if !found[expected.ID] {
+				t.Errorf("search did not find %q", expected.ID)
+			}
+		}
+	})
+}
+
+// indexRecord is one line of index.jsonl. Both the reference index and the
+// list --json output use the same keys, so one struct parses either.
+type indexRecord struct {
+	ID            string   `json:"id"`
+	Kind          string   `json:"kind"`
+	Title         string   `json:"title"`
+	Status        string   `json:"status"`
+	Created       string   `json:"created"`
+	Updated       string   `json:"updated"`
+	Repos         []string `json:"repos"`
+	Tags          []string `json:"tags"`
+	CodexSessions []string `json:"codex_sessions"`
+	Path          string   `json:"path"`
+}
+
+// sameRecord compares two index records, including their list fields.
+func sameRecord(a, b indexRecord) bool {
+	return a.ID == b.ID && a.Kind == b.Kind && a.Title == b.Title && a.Status == b.Status &&
+		a.Created == b.Created && a.Updated == b.Updated && a.Path == b.Path &&
+		slices.Equal(a.Repos, b.Repos) && slices.Equal(a.Tags, b.Tags) &&
+		slices.Equal(a.CodexSessions, b.CodexSessions)
+}
+
+// parseRecords parses newline-delimited index records, failing on a malformed
+// line so a corrupt payload cannot pass as an empty one.
+func parseRecords(t *testing.T, data []byte) []indexRecord {
+	t.Helper()
+	var records []indexRecord
+	for _, line := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		var record indexRecord
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatalf("parse index line %q: %v", line, err)
+		}
+		records = append(records, record)
+	}
+	return records
 }
 
 // readExitCodes reads python_vault_expected/exit_codes.json.
