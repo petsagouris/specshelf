@@ -186,6 +186,66 @@ func TestIndexTemporaryVault(t *testing.T) {
 	})
 }
 
+// The summary splits on Python's str.splitlines breaks, not just \n: a body
+// holding U+2028, a vertical tab or another exotic separator summarises the way
+// the reference implementation does, not as one long line.
+func TestSummarySplitsOnPythonLineBreaks(t *testing.T) {
+	cases := []struct{ name, body, want string }{
+		{"newline", "first\nsecond", "first"},
+		{"carriage return", "first\rsecond", "first"},
+		{"vertical tab", "first\vsecond", "first"},
+		{"form feed", "first\fsecond", "first"},
+		{"record separator", "first\x1esecond", "first"},
+		{"next line", "first\u0085second", "first"},
+		{"line separator", "first\u2028second", "first"},
+		{"paragraph separator", "first\u2029second", "first"},
+		{"heading before a line separator", "# Heading\u2028the real summary", "the real summary"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := summary(c.body); got != c.want {
+				t.Errorf("summary(%q) = %q, want %q", c.body, got, c.want)
+			}
+		})
+	}
+}
+
+// Index must ignore anything in the document directories that is not Markdown:
+// another file type, a file with no extension, and a directory whose name ends
+// in .md.
+func TestIndexIgnoresNonMarkdownEntry(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-kept.md", "---\nid: spec-20261017-kept\nkind: spec\ntitle: Kept\n---\n# Kept\n")
+	writeDoc(t, root, "specs/notes.txt", "not a document\n")
+	writeDoc(t, root, "specs/README", "no extension\n")
+	if err := os.Mkdir(filepath.Join(root, "specs", "nested.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	records, err := Index(root)
+	if err != nil {
+		t.Fatalf("Index: %v", err)
+	}
+	if len(records) != 1 || records[0].Path != "specs/2026-10-17-kept.md" {
+		t.Errorf("records = %+v, want only the Markdown document", records)
+	}
+}
+
+// Index is the strict path: a document it cannot read is an error naming the
+// file, unlike the tolerant List.
+func TestUnreadableDocumentFailsIndex(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-broken.md", "---\nid: spec-20261017-broken\nkind: spec\n")
+
+	_, err := Index(root)
+	if err == nil {
+		t.Fatal("Index succeeded on an unterminated document, want an error")
+	}
+	if !strings.Contains(err.Error(), "specs/2026-10-17-broken.md") {
+		t.Errorf("Index error %q does not name the failing file", err)
+	}
+}
+
 func TestIndexJSONEscaping(t *testing.T) {
 	cases := []struct {
 		name, in, want string

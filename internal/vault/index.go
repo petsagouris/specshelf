@@ -191,15 +191,29 @@ func newRecord(doc frontmatter.Document, rel string) IndexRecord {
 // summary is the first body line that is neither blank nor a heading, with
 // surrounding whitespace removed — the reference implementation's
 // first_content_line, which strips a line before deciding whether it is a
-// heading, so an indented "#" line is a heading too.
+// heading, so an indented "#" line is a heading too. Lines are split the way
+// Python's str.splitlines splits them, so a body holding a vertical tab, a form
+// feed, NEL, U+2028 or U+2029 summarises the same way the reference does.
 func summary(body string) string {
-	for _, line := range strings.Split(body, "\n") {
+	for _, line := range strings.FieldsFunc(body, isLineBreak) {
 		text := strings.TrimSpace(line)
 		if text != "" && !strings.HasPrefix(text, "#") {
 			return text
 		}
 	}
 	return ""
+}
+
+// isLineBreak reports whether r is a line boundary in Python's str.splitlines,
+// which is what the reference implementation's summary uses: the ASCII breaks
+// plus NEL, U+2028 and U+2029. The reader has already normalised CRLF and lone
+// CR to LF in the body.
+func isLineBreak(r rune) bool {
+	switch r {
+	case '\n', '\r', '\v', '\f', '\x1c', '\x1d', '\x1e', '\u0085', '\u2028', '\u2029':
+		return true
+	}
+	return false
 }
 
 // appendJSON writes the record's line, without its newline, onto dst.

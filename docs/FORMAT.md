@@ -87,11 +87,14 @@ The quality analysis screen shows each run's findings.
 ## Goals
 ```
 
-The title in the frontmatter and in the body's first heading is the same string.
-It is normalised — surrounding whitespace removed and inner runs of whitespace
-collapsed to one space — while the id and the file name are derived from the
-title as given. Whitespace-only differences therefore leave the id and file name
-alone; the divergence this fixes in the heading is in `DIVERGENCES.md`.
+A document this tool creates carries the same string as the title in its
+frontmatter and as its body's first heading. That title is normalised —
+surrounding whitespace removed and inner runs of whitespace collapsed to one
+space — while the id and the file name are derived from the title as given, so
+whitespace-only differences leave the id and file name alone; the divergence
+this fixes in the heading is in `DIVERGENCES.md`. A document written by another
+tool may have the two differ — the reference fixtures do — and the reader
+reports each string exactly as it finds it.
 
 ## Document id
 
@@ -134,10 +137,12 @@ directory.
 
 Each line is written the way the reference tool's
 `json.dumps(record, ensure_ascii=False)` writes it: `": "` after a key, `", "`
-between list items, control characters escaped as `\u00xx`, and every other
-character — including non-ASCII — emitted literally as UTF-8. `encoding/json`
-does not produce these bytes, so the encoder is hand-rolled and checked against
-the reference fixtures. A record for the sample document above looks like:
+between list items, the five control characters that have a JSON short escape
+(`\b`, `\f`, `\n`, `\r`, `\t`) written as that escape, every other control
+character escaped as `\u00xx`, and every other character — including non-ASCII —
+emitted literally as UTF-8. `encoding/json` does not produce these bytes, so the
+encoder is hand-rolled and checked against the reference fixtures. A record for
+the sample document above looks like:
 
 ```json
 {"id": "spec-20261017-quality-analysis-display-contract", "kind": "spec", "title": "Quality analysis display contract", "status": "active", "created": "2026-10-17", "updated": "2026-10-18", "repos": ["lippi-smart-customer", "aics-web-repos"], "tags": ["quality-analysis", "contract"], "codex_sessions": ["session-a", "session-b"], "path": "specs/2026-10-17-quality-analysis-display-contract.md", "summary": "The quality analysis screen shows each run's findings."}

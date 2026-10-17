@@ -1,12 +1,26 @@
 package vault
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/petsagouris/specshelf/internal/docs"
 )
+
+// init creates the layout but never index.jsonl: the index step owns that file,
+// and a vault with documents but no index regenerates it on demand.
+func TestInitVaultWritesNoIndex(t *testing.T) {
+	root := t.TempDir()
+	if err := initVault(root); err != nil {
+		t.Fatalf("initVault: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "index.jsonl")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("init left index.jsonl behind (stat err = %v); the index step owns it", err)
+	}
+}
 
 func TestInitVault(t *testing.T) {
 	t.Run("fresh directory", func(t *testing.T) {
