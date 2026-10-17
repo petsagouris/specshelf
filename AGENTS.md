@@ -77,12 +77,18 @@ scripts/bd-sync.py                 # after editing tasks.md; idempotent, --dry-r
 bd ready                           # unblocked work
 bd update <bead-id> --claim        # take a task before starting it
 bd unclaim <bead-id>               # release a claim whose agent died
-bd prime                           # beads' own operational context, at runtime
+bd --help                          # command reference (safe, unlike `bd prime`)
 ```
 
-Note: `bd setup opencode` would append its own "track ALL work in bd" and "close
-a bead to complete" instructions to this file. Do not run it — both rules
-contradict the precedence above. Use `bd prime` for runtime context instead.
+Keep beads' own *rule text* out of an agent's context. `bd setup opencode` appends
+a section to this file and `bd prime` injects one at runtime; both say "use beads
+for ALL task tracking" and "you MUST `bd close` before saying done", which
+contradict the precedence above, and neither can be configured to stop — only
+`no-git-ops` and `agent.profile` change the git wording. So: do not run
+`bd setup`, do not install the editor integrations, prefer `bd --help` over
+`bd prime`. (`bd hooks install` is unrelated — it installs git hooks, not context
+injection.) Beads is built for repositories where it *is* the tracker; this one is
+the inverse, so its session-close protocol points the wrong way here.
 
 - A bead exists only because a task exists. Work discovered mid-task is recorded
   in beads *and* added to `tasks.md`; the reverse never happens.
