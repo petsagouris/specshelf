@@ -70,6 +70,18 @@ func TestSplitFrontmatter(t *testing.T) {
 			wantHas:  true,
 			wantBody: "body",
 		},
+		{
+			name:     "a byte-order mark is ignored",
+			input:    "\ufeff---\nid: x\n---\nbody",
+			wantRaw:  "id: x",
+			wantHas:  true,
+			wantBody: "body",
+		},
+		{
+			name:     "a byte-order mark without a fence",
+			input:    "\ufeffjust a body\n",
+			wantBody: "just a body\n",
+		},
 	}
 
 	for _, tt := range tests {
