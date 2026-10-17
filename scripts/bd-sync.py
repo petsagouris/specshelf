@@ -75,7 +75,7 @@ def label(prefix, text, limit=64):
     if len(text) <= limit:
         return f"{prefix} {tidy(text)}"
     words = text[:limit].rsplit(" ", 1)[0].split()
-    for len(words) > 1 and words[-1].lower() in STOP_WORDS:
+    while len(words) > 1 and words[-1].lower() in STOP_WORDS:
         words.pop()
     return f"{prefix} {tidy(' '.join(words))}…"
 
