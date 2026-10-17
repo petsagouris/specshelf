@@ -1,6 +1,9 @@
 package frontmatter
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // Metadata holds parsed frontmatter fields. A field is a string when it carried
 // a value on its own line, and []string when it carried list items. Which shape
@@ -110,8 +113,8 @@ func hasUnescaped(s string, quote byte) bool {
 }
 
 // unescapeDouble resolves the escapes the writer emits inside a double quoted
-// value: \\, \", \n, \r and \t. Any other escape is left as written, so a
-// hand-written value is not silently reinterpreted.
+// value: \\, \", \n, \r, \t and a four-digit \uXXXX. Any other escape is left as
+// written, so a hand-written value is not silently reinterpreted.
 func unescapeDouble(inner string) string {
 	var b strings.Builder
 	for i := 0; i < len(inner); i++ {
@@ -128,6 +131,15 @@ func unescapeDouble(inner string) string {
 			b.WriteByte('\r')
 		case 't':
 			b.WriteByte('\t')
+		case 'u':
+			code, ok := hex4(inner[i+2:])
+			if !ok {
+				b.WriteByte(inner[i])
+				b.WriteByte(inner[i+1])
+				break
+			}
+			b.WriteRune(rune(code))
+			i += 4 // the 'u' and the four digits; the loop's own two steps make six
 		default:
 			b.WriteByte(inner[i])
 			b.WriteByte(inner[i+1])
@@ -135,4 +147,16 @@ func unescapeDouble(inner string) string {
 		i++
 	}
 	return b.String()
+}
+
+// hex4 reads exactly four hexadecimal digits.
+func hex4(rest string) (uint32, bool) {
+	if len(rest) < 4 {
+		return 0, false
+	}
+	code, err := strconv.ParseUint(rest[:4], 16, 32)
+	if err != nil {
+		return 0, false
+	}
+	return uint32(code), true
 }

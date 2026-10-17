@@ -70,6 +70,9 @@ func TestMarshalQuotesValuesThatWouldChangeMeaning(t *testing.T) {
 		{"infinity", ".inf", `".inf"`},
 		{"tab", "a\tb", `"a\tb"`},
 		{"newline", "line1\nline2", `"line1\nline2"`},
+		{"carriage return", "a\rb", `"a\rb"`},
+		{"exotic separator", "a\u2028b", `"a\u2028b"`},
+		{"control character", "a\x07b", `"a\u0007b"`},
 		{"backslash", `a\b`, `a\b`},
 		{"slug", "spec-20261017-a-slug", "spec-20261017-a-slug"},
 		{"version", "v0.1.0", "v0.1.0"},
@@ -102,7 +105,7 @@ func TestRoundTripThroughParse(t *testing.T) {
 		"- dash start", "*bold* start", "&anchor", "a #b", "ends:", `He said "hi"`,
 		`"`, `"quoted"`, "true", "null", "~", "42", "1.5", "0x1f", ".inf", "a\tb",
 		"line1\nline2", "line1\r\nline2", `a\b`, `a\"b`, "2026-10-17",
-		"spec-20261017-a-slug", "质量分析展示契约", "emoji 🚀 rocket", "a\u2028b",
+		"spec-20261017-a-slug", "质量分析展示契约", "emoji 🚀 rocket", "a\u2028b", "a\x07b",
 		"---", "a\n---\nb",
 	}
 	for _, value := range values {

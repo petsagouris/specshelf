@@ -61,6 +61,9 @@ func TestParseBlock(t *testing.T) {
 		{"a quoted item is unquoted", "tags:\n  - \"a #b\"\n  - \"true\"", Metadata{"tags": []string{"a #b", "true"}}},
 		{"a quoted numeric item is unquoted", "tags:\n  - \"123\"", Metadata{"tags": []string{"123"}}},
 		{"an explicitly empty quoted item survives", "tags:\n  - \"\"", Metadata{"tags": []string{""}}},
+		{"a unicode escape is decoded", "title: \"a\\u2028b\"", Metadata{"title": "a\u2028b"}},
+		{"a short unicode escape is kept", "title: \"a\\u12\"", Metadata{"title": `a\u12`}},
+		{"an unparsable unicode escape is kept", "title: \"a\\uZZZZ\"", Metadata{"title": `a\uZZZZ`}},
 
 		{"a repeated key keeps the last value", "title: first\ntitle: second", Metadata{"title": "second"}},
 		{"a scalar replaces an earlier list", "x: scalar\nx:\n  - a\n  - b", Metadata{"x": []string{"a", "b"}}},

@@ -87,7 +87,7 @@ func needsQuoting(value string) bool {
 		return true
 	case strings.TrimSpace(value) != value:
 		return true // leading or trailing whitespace is not preserved by a plain scalar
-	case strings.ContainsAny(value, "\n\r\t"):
+	case hasUnprintable(value):
 		return true // cannot appear in a single-line scalar, and would break the block
 	case strings.Contains(value, ": "), strings.HasSuffix(value, ":"):
 		return true
@@ -143,11 +143,44 @@ func quote(value string) string {
 		case '\t':
 			b.WriteString(`\t`)
 		default:
+			if escapeRune(r) {
+				fmt.Fprintf(&b, `\u%04x`, r)
+				continue
+			}
 			b.WriteRune(r)
 		}
 	}
 	b.WriteByte('"')
 	return b.String()
+}
+
+// hasUnprintable reports whether a value holds a character that cannot sit in a
+// plain single-line scalar: a break, a tab, or a character YAML forbids.
+func hasUnprintable(value string) bool {
+	for _, r := range value {
+		if r == '\n' || r == '\r' || r == '\t' || escapeRune(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// escapeRune reports whether a character has to be written as a \uXXXX escape.
+// YAML forbids the control characters outright, and the parsers in the wild read
+// U+0085, U+2028 and U+2029 as line breaks, so leaving one raw would end the line
+// the value sits on and change what the block means.
+func escapeRune(r rune) bool {
+	switch {
+	case r < 0x20: // the wordy escapes for \n, \r and \t are handled before this
+		return true
+	case r == 0x7f:
+		return true
+	case r >= 0x80 && r <= 0x9f:
+		return true
+	case r == 0x2028 || r == 0x2029:
+		return true
+	}
+	return false
 }
 
 // scalarValue returns a scalar field as text: its string value, or empty when the

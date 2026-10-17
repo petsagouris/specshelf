@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/spf13/cobra v1.10.2
+	go.yaml.in/yaml/v3 v3.0.5 // test-only: asserts the frontmatter we emit is valid YAML
 	golang.org/x/text v0.43.0
 )
 
