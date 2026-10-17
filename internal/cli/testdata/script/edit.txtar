@@ -1,0 +1,36 @@
+# edit opens the document in $VISUAL. An editor that changes nothing leaves the
+# document and the index byte-for-byte as they were, and does not regenerate the
+# index: the sentinel would not survive a refresh.
+env VISUAL=fakeeditor
+cp sentinel.jsonl vault/index.jsonl
+cp vault/specs/2026-10-17-note.md before.md
+exec specshelf --home $WORK/vault edit spec-20261017-note
+cmpenv stdout edit.stdout
+cmp vault/specs/2026-10-17-note.md before.md
+cmp vault/index.jsonl sentinel.jsonl
+
+# A changed document is stamped with today's date, the editor's text survives,
+# and the index follows the rewrite.
+env FAKE_EDITOR_APPEND='changed by the editor'
+exec specshelf --home $WORK/vault edit spec-20261017-note
+grep 'changed by the editor' vault/specs/2026-10-17-note.md
+grep 'created: 2000-01-01' vault/specs/2026-10-17-note.md
+! grep 'updated: 2000-01-01' vault/specs/2026-10-17-note.md
+grep 'updated: \d{4}-\d{2}-\d{2}' vault/specs/2026-10-17-note.md
+! cmp vault/index.jsonl sentinel.jsonl
+grep 'changed by the editor' vault/index.jsonl
+
+-- edit.stdout --
+$WORK/vault/specs/2026-10-17-note.md
+-- sentinel.jsonl --
+stale index: an unchanged edit must not regenerate this
+-- vault/specs/2026-10-17-note.md --
+---
+id: spec-20261017-note
+kind: spec
+title: Note
+status: active
+created: 2000-01-01
+updated: 2000-01-01
+---
+# Note

@@ -11,23 +11,31 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
-// TestMain builds the real command binary and puts it on PATH so the command
-// scripts run `exec specshelf` against it, exercising cmd/specshelf's exit
-// wiring rather than the test binary.
+// TestMain builds the real command binary and a fake editor, and puts both on
+// PATH so the command scripts run `exec specshelf` against the built binary —
+// exercising cmd/specshelf's exit wiring rather than the test binary — and set
+// $VISUAL to the cross-platform fakeeditor.
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "specshelf-bin")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create binary directory:", err)
 		os.Exit(1)
 	}
-	name := "specshelf"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
+	exe := func(name string) string {
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		return filepath.Join(dir, name)
 	}
-	build := exec.Command("go", "build", "-o", filepath.Join(dir, name), "github.com/petsagouris/specshelf/cmd/specshelf")
-	if out, err := build.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "build specshelf: %v\n%s", err, out)
-		os.Exit(1)
+	for name, pkg := range map[string]string{
+		"specshelf":  "github.com/petsagouris/specshelf/cmd/specshelf",
+		"fakeeditor": "./testdata/fakeeditor",
+	} {
+		build := exec.Command("go", "build", "-o", exe(name), pkg)
+		if out, err := build.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "build %s: %v\n%s", name, err, out)
+			os.Exit(1)
+		}
 	}
 	if err := os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH")); err != nil {
 		fmt.Fprintln(os.Stderr, "set PATH:", err)
