@@ -34,6 +34,12 @@ type detailMsg struct {
 	err     error
 }
 
+// editedMsg is the result of handing the open document to the editor.
+type editedMsg struct {
+	ref string
+	err error
+}
+
 // Model is the interactive session's state and its three views plus help.
 type Model struct {
 	store Store
@@ -104,6 +110,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	case editedMsg:
+		// The store already stamped updated and refreshed the index; reload the
+		// list and re-read the document so the session shows the editor's work.
+		if msg.err != nil {
+			m.err = msg.err
+			if msg.ref == m.detailRef {
+				m.detail = "error: " + msg.err.Error()
+			}
+			return m, nil
+		}
+		m.err = nil
+		return m, tea.Batch(m.loadCmd(), m.detailCmd(msg.ref))
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		if msg.Width <= 0 && msg.Height <= 0 {
@@ -221,6 +239,8 @@ func (m *Model) handleDetailKey(key tea.KeyPressMsg) tea.Cmd {
 		return tea.Quit
 	case "esc":
 		m.mode = modeList
+	case "e":
+		return m.editCmd()
 	}
 	return nil
 }
@@ -274,16 +294,37 @@ func (m *Model) openDetail() tea.Cmd {
 	m.detailRef = ref
 	m.detail = ""
 	m.mode = modeDetail
+	return m.detailCmd(ref)
+}
+
+// detailCmd fetches one document's bytes through the store. It is the only
+// source of the detail view's content, so a reload re-reads through it too.
+func (m *Model) detailCmd(ref string) tea.Cmd {
 	store := m.store
+	if store == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		if store == nil {
-			return detailMsg{ref: ref}
-		}
 		found, err := store.Find(ref)
 		if err != nil {
 			return detailMsg{ref: ref, err: err}
 		}
 		return detailMsg{ref: ref, content: string(found.Data)}
+	}
+}
+
+// editCmd hands the open document to the store's editor. The store re-reads the
+// document after the editor exits and refreshes the index; the session reloads
+// on the resulting message.
+func (m *Model) editCmd() tea.Cmd {
+	ref := m.detailRef
+	store := m.store
+	if store == nil || ref == "" {
+		return nil
+	}
+	return func() tea.Msg {
+		_, err := store.Edit(ref)
+		return editedMsg{ref: ref, err: err}
 	}
 }
 

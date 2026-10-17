@@ -17,9 +17,11 @@ type fakeStore struct {
 	err      error
 	content  map[string]string
 	findErr  error
+	editErr  error
 
 	lists int
 	finds int
+	edits int
 }
 
 func (f *fakeStore) List() ([]vault.IndexRecord, []vault.Warning, error) {
@@ -33,6 +35,14 @@ func (f *fakeStore) Find(ref string) (vault.Found, error) {
 		return vault.Found{}, f.findErr
 	}
 	return vault.Found{Path: ref, Data: []byte(f.content[ref])}, nil
+}
+
+func (f *fakeStore) Edit(ref string) (string, error) {
+	f.edits++
+	if f.editErr != nil {
+		return "", f.editErr
+	}
+	return ref, nil
 }
 
 func sampleRecords() []vault.IndexRecord {
