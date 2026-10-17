@@ -377,6 +377,70 @@ func TestRemoveConfinement(t *testing.T) {
 	})
 }
 
+// Edit is confined to the vault. Reference resolution tries an existing path
+// first, so without a check `edit <path>` hands any file the user names to the
+// editor; a resolved document outside the root is refused before the editor
+// runs, and the outside file is left byte-identical.
+func TestEditRefusesOutsideVault(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "vault")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	const content = "---\nid: spec-20261017-note\nkind: spec\ntitle: Note\n---\n# Note\n"
+	if err := os.WriteFile(outside, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := mustRead(t, outside)
+
+	// The fake editor appends when it runs, so a rewritten file is visible as a
+	// byte difference rather than inferred from the error.
+	_, err := Edit(root, outside, fakeEditor{appendText: "\nrewritten by the editor\n"})
+	if after := mustRead(t, outside); !bytes.Equal(after, before) {
+		t.Errorf("outside file was rewritten:\n got %q\nwant %q", after, before)
+	}
+	var outsideErr *OutsideVaultError
+	if !errors.As(err, &outsideErr) {
+		t.Fatalf("Edit error = %v, want *OutsideVaultError", err)
+	}
+	if outsideErr.Path != outside || !strings.Contains(err.Error(), outside) {
+		t.Errorf("error %q must name the path %s", err.Error(), outside)
+	}
+	if !strings.Contains(err.Error(), root) {
+		t.Errorf("error %q must name the root %s", err.Error(), root)
+	}
+}
+
+// SetStatus is confined to the vault the same way Edit is: a resolved document
+// outside the root is refused and left byte-identical.
+func TestSetStatusRefusesOutsideVault(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "vault")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	const content = "---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\n---\n# Note\n"
+	if err := os.WriteFile(outside, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := mustRead(t, outside)
+
+	_, err := SetStatus(root, outside, "accepted")
+	if after := mustRead(t, outside); !bytes.Equal(after, before) {
+		t.Errorf("outside file was rewritten:\n got %q\nwant %q", after, before)
+	}
+	var outsideErr *OutsideVaultError
+	if !errors.As(err, &outsideErr) {
+		t.Fatalf("SetStatus error = %v, want *OutsideVaultError", err)
+	}
+	if outsideErr.Path != outside || !strings.Contains(err.Error(), outside) {
+		t.Errorf("error %q must name the path %s", err.Error(), outside)
+	}
+	if !strings.Contains(err.Error(), root) {
+		t.Errorf("error %q must name the root %s", err.Error(), root)
+	}
+}
+
 func readID(t *testing.T, path string) string {
 	t.Helper()
 	doc, err := readDocument(path)
