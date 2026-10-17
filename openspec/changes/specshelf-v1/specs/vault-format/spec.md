@@ -59,6 +59,11 @@ reported as an error naming the file.
 - **WHEN** a document written by the Python tool has `title: Decision: use #1 approach`
 - **THEN** the parsed title is exactly `Decision: use #1 approach`
 
+#### Scenario: Empty values mean the empty scalar
+
+- **WHEN** a document contains `title:` with nothing after the colon, or `title: []`
+- **THEN** the title reads as an empty string, not as a list and not as the text `[]`
+
 #### Scenario: Reading a document without frontmatter
 
 - **WHEN** a Markdown file with no frontmatter is read
@@ -82,6 +87,11 @@ preserved unknown keys sorted by name.
 
 - **WHEN** a document titled `Fix #42: the thing` is written
 - **THEN** the emitted frontmatter parses with a standard YAML parser and round-trips the exact title
+
+#### Scenario: Empty values are written unambiguously
+
+- **WHEN** a document whose title is empty is written
+- **THEN** the field is emitted as `title: ""` and reads back as an empty title in specshelf and in a standard YAML parser
 
 #### Scenario: Field ordering is stable
 
@@ -146,6 +156,11 @@ missing it SHALL be recreated from the built-in default before use.
 
 - **WHEN** a document is created in a vault whose `templates/spec.md` was deleted
 - **THEN** the default template is written back and the new document uses it
+
+#### Scenario: Title whitespace is normalised consistently
+
+- **WHEN** a document is created from a title carrying surrounding or repeated whitespace
+- **THEN** the frontmatter title and the body heading both carry the same normalised title, with surrounding whitespace removed and inner runs collapsed to one space, while the id and file name are the same as they would be for that title unnormalised
 
 ### Requirement: Index file content
 

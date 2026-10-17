@@ -91,9 +91,16 @@ not on the list and not byte-compatible SHALL be treated as a defect.
 ### Requirement: Cross-platform verification
 
 The unit tests, the fixture-based compatibility tests and the command-level
-tests SHALL run in continuous integration on Linux, macOS and Windows.
+tests SHALL run on Linux, macOS and Windows. The repository SHALL keep a
+workflow that runs them on all three operating systems, enabled whenever the
+repository is public.
 
 #### Scenario: Windows runs the suite
 
-- **WHEN** continuous integration runs on Windows
-- **THEN** the test suite executes and exercises path handling, file replacement and line endings
+- **WHEN** the test suite runs on Windows
+- **THEN** it exercises path handling, file replacement and line endings
+
+#### Scenario: Local verification while the workflow is disabled
+
+- **WHEN** the suite is run locally while the workflow is disabled
+- **THEN** the Linux run passes, and the packages compile and vet for macOS and Windows

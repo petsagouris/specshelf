@@ -217,9 +217,12 @@ a divergence from upstream).
 
 - **Windows-specific behaviour is unverifiable on this machine** (console
   detection for colour, `os.Rename` over an open file, `go install` over a
-  running `.exe`) → the three-OS CI matrix plus explicit tests for rename and
-  path handling; the upgrade path pre-emptively refuses to self-replace on
-  Windows.
+  running `.exe`) → explicit tests for rename and path handling, plus
+  cross-compilation and `go vet` for windows and darwin on every local
+  verification run. The three-OS CI matrix stays in the repository but is
+  disabled while it is private, so runtime behaviour on those platforms is
+  unverified until it is enabled; the upgrade path pre-emptively refuses to
+  self-replace on Windows.
 - **We emit different bytes than upstream for titles needing quotes** → it is an
   enumerated divergence with its own test, and the Python reader accepts our
   output, so interchange holds in both directions.

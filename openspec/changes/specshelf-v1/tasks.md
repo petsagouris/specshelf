@@ -5,7 +5,7 @@
 - [x] 1.1 Initialise the module `github.com/petsagouris/specshelf` with Go 1.26, add `spf13/cobra`, and create `cmd/specshelf/main.go` whose root command prints help and reports a development version; verify with `go build ./...` and `go run ./cmd/specshelf --version`
 - [x] 1.2 Add the package skeleton (`internal/frontmatter`, `internal/vault`, `internal/config`, `internal/gitx`, `internal/cli`, `internal/tui`, `internal/docs`) with one-line package docs; verify `go vet ./...` is clean
 - [x] 1.3 Add `LICENSE` (MIT, retaining the upstream copyright line), `NOTICE`, a README skeleton stating the project is a Go port of `agent-spec-vault`, and `.gitignore`; verify the upstream notice appears in both LICENSE and README
-- [ ] 1.4 Add the CI workflow: build, `vet`, `gofmt -l`, and `go test ./...` on ubuntu, macos and windows, plus golangci-lint on ubuntu; verify a run passes on all three runners
+- [x] 1.4 Add the CI workflow: build, `vet`, `gofmt -l`, and `go test ./...` on ubuntu, macos and windows, plus golangci-lint on ubuntu; verify it is accepted by GitHub, that the referenced actions exist, and that the same command sequence passes locally (the workflow is disabled on GitHub while the repository is private)
 - [x] 1.5 Add the install smoke test that builds into a temporary `GOBIN` with `go install` and asserts `--version` prints the development marker; verify the test passes locally and in CI
 
 ## 2. M1 — Vault format
@@ -35,7 +35,7 @@
 - [ ] 3.10 Implement `doctor` and `stats` over the store's validation API; verify tests cover a healthy vault, an unreadable file, a kind/directory mismatch, exit codes and grouped counts
 - [ ] 3.11 Implement colour with the three modes and the gating rules; verify tests use a non-terminal writer and `NO_COLOR`, and assert that `--json`, `--format tsv` and single-value stdout never carry escapes
 - [ ] 3.12 Generate the compatibility fixtures from the Python tool once, commit them under `testdata/`, and add the default-suite test that compares specshelf's output and files against them; verify the suite passes with Python unavailable
-- [ ] 3.13 Write `docs/DIVERGENCES.md` listing every intentional divergence (valid-YAML emission, atomic writes, exclusive creation, stderr warnings, automatic index refresh, preserved-key ordering, new commands, exit codes, colour rules) and add one test per entry asserting exactly the documented behaviour; verify each test fails if the behaviour is reverted
+- [ ] 3.13 Write `docs/DIVERGENCES.md` listing every intentional divergence (valid-YAML emission, atomic writes, exclusive creation, stderr warnings, automatic index refresh, preserved-key ordering, new commands, exit codes, colour rules, empty scalar values reading as empty rather than as `[]`, and normalised title whitespace in the body heading) and add one test per entry asserting exactly the documented behaviour; verify each test fails if the behaviour is reverted
 - [ ] 3.14 Add the `//go:build conformance` differential suite that runs both tools against equivalent vaults and compares stdout, exit codes and resulting files, skipping when Python or the package is absent; verify it skips without Python and reports differences when a divergence is unlisted
 - [ ] 3.15 Add the bidirectional interchange tests: a Python-written fixture vault is fully readable by specshelf with no warnings, and the reverse vault is readable by the Python tool inside the conformance suite; verify the default-suite direction passes without Python
 - [ ] 3.16 Document install and quickstart in the README and add a test that runs the documented command sequence against a temporary vault; verify the test fails when a documented command or flag changes
@@ -65,7 +65,7 @@
 
 ## 6. M5 — Hardening and first tag
 
-- [ ] 6.1 Run the full suite on all three operating systems and the conformance suite with Python on Linux; verify every job is green and the divergence list has one covering test per entry
+- [ ] 6.1 Run the full suite locally, including cross-compilation and `vet` for macOS and Windows, together with the conformance suite with Python available; verify the local run is green and, once the repository is public, that the workflow passes on all three runners with one covering test per divergence entry
 - [ ] 6.2 Write `docs/ARCHITECTURE.md` describing the package boundaries and the single-writer rule, and add a test asserting the documented package list matches the directories on disk
 - [ ] 6.3 Write `CHANGELOG.md` for v0.1.0 covering the parity surface, the corrected behaviours and the new capabilities
 - [ ] 6.4 Tag `v0.1.0`, then verify on Linux, macOS and Windows that `go install github.com/petsagouris/specshelf/cmd/specshelf@v0.1.0` produces a binary whose `--version` reports the tag
@@ -76,3 +76,4 @@
 - After M5, review the change with the OpenSpec verify workflow.
 - Archive the change so the eight capability specs are promoted into `openspec/specs/`.
 - Deferred by decision, not to be picked up here: the MCP server, merged multi-vault search, release artifacts and signing.
+- CI is disabled on GitHub while the repository is private, because private-repository Actions are blocked by the account's billing gate. Until it is enabled, Windows and macOS runtime behaviour stays unverified; cross-compilation and `vet` for both platforms on every local verification run are the substitute.

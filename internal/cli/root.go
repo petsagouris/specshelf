@@ -23,7 +23,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	if err := root.Execute(); err != nil {
-		fmt.Fprintf(stderr, "specshelf: %s\n", err)
+		_, _ = fmt.Fprintf(stderr, "specshelf: %s\n", err)
 		return 1
 	}
 	return 0
