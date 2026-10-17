@@ -32,7 +32,10 @@ Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
 - Linux, macOS and Windows; CI runs the test suite on all three.
 - Runtime dependencies are exactly `spf13/cobra`, `golang.org/x/text`,
   `pelletier/go-toml/v2`, `charm.land/bubbletea/v2` (+ `charm.land/bubbles/v2`).
-  Anything else needs an explicit decision first.
+  Anything else needs an explicit decision first. Cobra's own document
+  generation, which `man` uses, is covered by D4: it compiles in
+  `cpuguy83/go-md2man/v2` and `russross/blackfriday/v2` as indirect modules
+  rather than us hand-rolling roff.
 - Charm imports are `charm.land/...`. The `github.com/charmbracelet/...` v2 paths
   do not compile.
 - Vault format, document bytes and document ids stay compatible with the Python
@@ -45,7 +48,9 @@ Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
 `cmd/specshelf` argv → exit code · `internal/frontmatter` one document's bytes ·
 `internal/vault` resolution, discovery, CRUD, atomic IO, index, slug, validation ·
 `internal/config` · `internal/gitx` · `internal/cli` · `internal/tui` ·
-`internal/docs` embedded templates.
+`internal/docs` embedded templates ·
+`internal/conformance` the fixture comparison and the differential suite against
+the Python reference tool.
 
 **The one rule: `internal/vault` is the only package that touches vault files.**
 Every surface — CLI now, TUI in this change, MCP later — calls it. A second write
