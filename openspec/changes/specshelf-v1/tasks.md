@@ -10,16 +10,19 @@
 
 ## 2. M1 — Vault format
 
-- [ ] 2.1 Implement the tolerant frontmatter reader with table tests covering unquoted scalars, quoted scalars, colon and hash inside values, empty list values, block sequences, blank lines, missing frontmatter and unterminated frontmatter; verify the table suite passes
-- [ ] 2.2 Implement the writer with the fixed field order, quoting rules and preserved unknown keys, and assert idempotence (writing twice is byte-identical); verify with round-trip tests
-- [ ] 2.3 Add `go.yaml.in/yaml/v3` as a test-only dependency and a test that every frontmatter block emitted by the writer parses as valid YAML; verify the test fails when the quoting rules are weakened
-- [ ] 2.4 Add a fuzz test for the reader asserting no panic and that any successfully parsed document re-emits parseable frontmatter; verify `go test -run Fuzz -fuzz FuzzReadFrontmatter -fuzztime 30s` finds no failure
-- [ ] 2.5 Implement `slugify` and id generation using `golang.org/x/text/unicode/norm`, and commit the title corpus (ASCII, accented, sharp S, Nordic letters, CJK, Cyrillic, emoji, punctuation-only, over-length) with expected values generated from the Python implementation; verify all corpus cases match
-- [ ] 2.6 Implement document file naming with the local-date prefix and `-N` collision suffix; verify tests cover same-title and same-day collisions and that no existing file is overwritten
-- [ ] 2.7 Implement vault layout initialisation with the built-in README and templates, creating only what is missing; verify tests cover a fresh directory and a vault with a user-edited template
-- [ ] 2.8 Implement body seeding from the template for a document's kind, including recreating a deleted template; verify tests cover both kinds and the deleted-template case
-- [ ] 2.9 Implement `index.jsonl` encoding with the documented field order, path relativisation, summary extraction, directory ordering and literal UTF-8; verify tests cover a mixed vault and a non-ASCII title
-- [ ] 2.10 Write `docs/FORMAT.md` describing the vault layout, frontmatter fields, id derivation and index record, and add a test that parses the document sample from that file with the real reader; verify the test fails if the sample and the code disagree
+- [ ] 2.1 Implement document splitting in the reader: a pure `Parse(name, data)` that separates the frontmatter block from the body, normalises CRLF and lone CR to LF, treats a document with no frontmatter as body-only with empty metadata, and reports an unterminated block as an error naming the file; verify with a table test covering each case
+- [ ] 2.2 Implement the line dialect: unquoted scalars, block sequences, blank lines ignored, lines without a key separator ignored, list items with no preceding key ignored, values keeping colons and hashes, and quoted values unquoted; verify with a table test covering each case
+- [ ] 2.3 Implement the typed view over the parsed fields: scalar fields (`id`, `kind`, `title`, `status`, `created`, `updated`) and list fields (`repos`, `tags`, `codex_sessions`), an empty value meaning the empty string for scalars and the empty list for lists, `title: []` meaning empty, and accessors that never return a list where a scalar is expected; verify with a table test including the empty-value cases
+- [ ] 2.4 Verify the reader against the reference fixtures: every document in `testdata/python_vault` and `testdata/python_vault_rewritten` parses with its expected title, kind and lists, including the invalid-YAML titles, and none reports an error; verify the fixture test passes
+- [ ] 2.5 Implement the writer with the fixed field order, quoting rules and preserved unknown keys, and assert idempotence (writing twice is byte-identical); verify with round-trip tests
+- [ ] 2.6 Add `go.yaml.in/yaml/v3` as a test-only dependency and a test that every frontmatter block emitted by the writer parses as valid YAML; verify the test fails when the quoting rules are weakened
+- [ ] 2.7 Add a fuzz test for the reader asserting no panic and that any successfully parsed document re-emits parseable frontmatter; verify `go test -run Fuzz -fuzz FuzzReadFrontmatter -fuzztime 30s` finds no failure
+- [ ] 2.8 Implement `slugify` and id generation using `golang.org/x/text/unicode/norm`, and commit the title corpus (ASCII, accented, sharp S, Nordic letters, CJK, Cyrillic, emoji, punctuation-only, over-length) with expected values generated from the Python implementation; verify all corpus cases match
+- [ ] 2.9 Implement document file naming with the local-date prefix and `-N` collision suffix; verify tests cover same-title and same-day collisions and that no existing file is overwritten
+- [ ] 2.10 Implement vault layout initialisation with the built-in README and templates, creating only what is missing; verify tests cover a fresh directory and a vault with a user-edited template
+- [ ] 2.11 Implement body seeding from the template for a document's kind, including recreating a deleted template, and normalise the title used for both the frontmatter and the heading (surrounding whitespace removed, inner runs collapsed) while the id and file name stay derived from the title as given; verify tests cover both kinds, the deleted-template case and a title carrying stray whitespace
+- [ ] 2.12 Implement `index.jsonl` encoding with the documented field order, path relativisation, summary extraction, directory ordering and literal UTF-8; verify tests cover a mixed vault and a non-ASCII title
+- [ ] 2.13 Write `docs/FORMAT.md` describing the vault layout, frontmatter fields, id derivation and index record, and add a test that parses the document sample from that file with the real reader; verify the test fails if the sample and the code disagree
 
 ## 3. M2 — Store and CLI parity (v0.1.0)
 
