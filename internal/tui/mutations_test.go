@@ -12,9 +12,12 @@ import (
 	"github.com/petsagouris/specshelf/internal/vault"
 )
 
-// requestDelete asks the session to delete the open document. 5.5 turns this
-// into a confirmation step.
-func requestDelete(m *Model) tea.Cmd { return update(m, k('d')) }
+// requestDelete asks the session to delete the open document and confirms the
+// prompt. Only the confirmation removes the document.
+func requestDelete(m *Model) tea.Cmd {
+	update(m, k('d'))
+	return update(m, k('y'))
+}
 
 // withoutLine returns index with the line containing needle removed, so a test
 // can assert the index changed only by losing the deleted document's record.
@@ -165,5 +168,41 @@ func TestStatusChangeRoutesThroughStore(t *testing.T) {
 	}
 	if _, reload := m.Update(msg); reload == nil {
 		t.Fatal("a status change did not reload the session")
+	}
+}
+
+// TestCancelledDeletionLeavesDocument is 5.5: deletion asks first, and declining
+// the confirmation leaves the file on disk and the index listing it.
+func TestCancelledDeletionLeavesDocument(t *testing.T) {
+	root, ref, path := seedVault(t, "Keep me")
+
+	m := New(VaultStore{Root: root})
+	update(m, execCmd(t, m.Init()))
+	update(m, execCmd(t, update(m, kc(tea.KeyEnter))))
+
+	update(m, k('d'))
+	if m.mode != modeConfirm {
+		t.Fatalf("`d` left mode %d, want the delete confirmation", m.mode)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("requesting deletion removed the document before confirmation: %v", err)
+	}
+
+	update(m, kc(tea.KeyEsc))
+	if m.mode != modeDetail {
+		t.Fatalf("cancel left mode %d, want detail", m.mode)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("a cancelled deletion removed the document: %v", err)
+	}
+	index, err := os.ReadFile(filepath.Join(root, "index.jsonl"))
+	if err != nil {
+		t.Fatalf("read index: %v", err)
+	}
+	if !strings.Contains(string(index), `"id": "`+ref+`"`) {
+		t.Fatalf("a cancelled deletion dropped the record from the index:\n%s", index)
+	}
+	if len(m.records) != 1 || m.records[0].ID != ref {
+		t.Fatalf("the session lost the document: %+v", m.records)
 	}
 }

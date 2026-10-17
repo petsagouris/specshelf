@@ -18,6 +18,7 @@ const (
 	modeCreate
 	modeHelp
 	modeStatus
+	modeConfirm
 )
 
 // loadedMsg is the result of one List call: the documents, the warnings for the
@@ -90,6 +91,10 @@ type Model struct {
 	// input.
 	statusRef   string
 	statusValue string
+
+	// confirmRef is the document a pending deletion names. A deletion happens
+	// only after the confirmation view is answered with y.
+	confirmRef string
 
 	// Create is the request the create prompt submitted. It is kept so 5.4 can
 	// route it through the store; the prompt itself does not mutate the vault.
@@ -196,6 +201,8 @@ func (m *Model) View() tea.View {
 		content = m.renderCreate()
 	case modeStatus:
 		content = m.renderStatus()
+	case modeConfirm:
+		content = m.renderConfirm()
 	case modeHelp:
 		content = m.renderHelp()
 	default:
@@ -216,6 +223,8 @@ func (m *Model) handleKey(key tea.KeyPressMsg) tea.Cmd {
 		return m.handleCreateKey(key)
 	case modeStatus:
 		return m.handleStatusKey(key)
+	case modeConfirm:
+		return m.handleConfirmKey(key)
 	case modeHelp:
 		return m.handleHelpKey(key)
 	default:
@@ -299,7 +308,23 @@ func (m *Model) handleDetailKey(key tea.KeyPressMsg) tea.Cmd {
 		m.statusValue = ""
 		m.mode = modeStatus
 	case "d":
+		m.confirmRef = m.detailRef
+		m.mode = modeConfirm
+	}
+	return nil
+}
+
+// handleConfirmKey answers the delete confirmation. Only y removes the
+// document; esc and n cancel and leave it in place.
+func (m *Model) handleConfirmKey(key tea.KeyPressMsg) tea.Cmd {
+	switch key.String() {
+	case "ctrl+c":
+		m.quitting = true
+		return tea.Quit
+	case "y":
 		return m.deleteCmd()
+	case "n", "esc":
+		m.mode = modeDetail
 	}
 	return nil
 }
@@ -575,6 +600,18 @@ func (m *Model) renderStatus() string {
 		"status:   " + m.statusValue + "_",
 		"",
 		"enter apply · esc cancel",
+	}, m.width)
+}
+
+func (m *Model) renderConfirm() string {
+	name := m.confirmRef
+	if record, ok := m.recordFor(m.confirmRef); ok {
+		name = record.Title
+	}
+	return frame([]string{
+		"Delete " + name + "?",
+		"",
+		"y confirm · esc cancel",
 	}, m.width)
 }
 
