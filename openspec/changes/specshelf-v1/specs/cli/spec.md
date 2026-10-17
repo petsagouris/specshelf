@@ -128,7 +128,7 @@ an unknown command, or conflicting selectors.
 
 `list`, `search` and `prime` SHALL accept `--kind`, `--repo`, `--tag`,
 `--codex-session` and `--status` filters, ANDed together, and SHALL order
-matches by `updated` descending, then by id ascending. `list` SHALL default to
+matches by `updated` descending, then by id descending. `list` SHALL default to
 50 results and `prime` to 12, both overridable with `--limit`.
 
 #### Scenario: Combined filters
@@ -139,7 +139,7 @@ matches by `updated` descending, then by id ascending. `list` SHALL default to
 #### Scenario: Default ordering
 
 - **WHEN** several documents share an `updated` date
-- **THEN** they are ordered by id ascending within that date
+- **THEN** they are ordered by id descending within that date
 
 ### Requirement: Agent prime output
 
