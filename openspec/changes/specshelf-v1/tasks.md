@@ -56,9 +56,10 @@
 - [ ] 4.4 Implement `completion` for bash, zsh, fish and PowerShell and `man` for the root command and subcommands; verify a CI step sources the bash and zsh completions and generation mentions every command
 - [x] 4.5 Implement config loading: TOML at the platform config directory, `SPECSHELF_CONFIG` override, per-setting precedence, warnings for unknown keys, and errors naming file and location for malformed input; verify tests cover each case and write `docs/CONFIG.md` with a sample file the loader test parses
 - [ ] 4.6 Implement named vaults and `--vault`, including the unknown-name error that lists declared names; verify tests cover selection and the error message
-- [ ] 4.7 Implement `sync` through the `git` executable with `--push`/`--no-push`, nothing-to-commit success, initial-repository creation, rejection handling and a clear error when git is missing; verify tests run against temporary repositories and skip when git is unavailable
+- [ ] 4.7 Implement `sync` through the `git` executable with `--push`/`--no-push`, nothing-to-commit success, initial-repository creation, rejection handling and a clear error when git is missing; verify tests run against temporary repositories and skip when git is unavailable. The `internal/gitx` package — running the executable, staging, committing, pushing, the nothing-to-commit success, initial-repository creation, rejection handling and the missing-git error — is the deliverable here; the `sync` command that calls it is 4.10
 - [ ] 4.8 Implement `upgrade --check` against the module proxy and `upgrade` with the install-directory check, the print-the-command path, the missing-toolchain path and the Windows no-replace path; verify tests use a stubbed proxy endpoint and a non-install-directory executable
 - [ ] 4.9 Add `--slug` to document creation with a test asserting a hand-picked slug is used verbatim and the id stays unique
+- [ ] 4.10 Add the `sync` command: wire `internal/gitx` into the command surface with `--push`/`--no-push`, reporting what happened on stdout and failures on stderr with the exit code the spec requires; verify with a testscript script against a temporary repository
 
 ## 5. M4 — Interactive session
 
