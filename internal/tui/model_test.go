@@ -37,8 +37,8 @@ func (f *fakeStore) Find(ref string) (vault.Found, error) {
 
 func sampleRecords() []vault.IndexRecord {
 	return []vault.IndexRecord{
-		{ID: "spec-20260102-alpha", Kind: "spec", Title: "Alpha spec", Status: "open", Updated: "2026-01-02", Tags: []string{"work"}, Path: "specs/2026-01-02-alpha.md", Summary: "Alpha summary"},
-		{ID: "decision-20260101-beta", Kind: "decision", Title: "Beta decision", Status: "accepted", Updated: "2026-01-01", Tags: []string{"infra", "work"}, Path: "decisions/2026-01-01-beta.md", Summary: "Beta summary"},
+		{ID: "spec-20260102-alpha", Kind: "spec", Title: "Alpha spec", Status: "open", Updated: "2026-01-02", Repos: []string{"specshelf"}, Tags: []string{"work"}, Path: "specs/2026-01-02-alpha.md", Summary: "Alpha summary"},
+		{ID: "decision-20260101-beta", Kind: "decision", Title: "Beta decision", Status: "accepted", Updated: "2026-01-01", Repos: []string{"infra"}, Tags: []string{"infra", "work"}, Path: "decisions/2026-01-01-beta.md", Summary: "Beta summary"},
 		{ID: "spec-20251231-gamma", Kind: "spec", Title: "Gamma spec", Status: "done", Updated: "2025-12-31", Path: "specs/2025-12-31-gamma.md", Summary: "Gamma summary"},
 	}
 }

@@ -46,6 +46,11 @@ type Model struct {
 	mode          mode
 	cursor        int
 
+	// filter narrows the loaded documents in memory; filtering is true while
+	// the text query is being typed.
+	filter    Filter
+	filtering bool
+
 	// detailRef is the reference of the document open in the detail view and
 	// detail its loaded content.
 	detailRef string
@@ -142,6 +147,9 @@ func (m *Model) handleKey(key tea.KeyPressMsg) tea.Cmd {
 }
 
 func (m *Model) handleListKey(key tea.KeyPressMsg) tea.Cmd {
+	if m.filtering {
+		return m.handleFilterKey(key)
+	}
 	switch key.String() {
 	case "q", "ctrl+c":
 		m.quitting = true
@@ -159,7 +167,44 @@ func (m *Model) handleListKey(key tea.KeyPressMsg) tea.Cmd {
 		m.createTitle = ""
 	case "?":
 		m.mode = modeHelp
+	case "/":
+		m.filtering = true
+	case "K":
+		m.filter.Kind = next(kindOptions(m.records), m.filter.Kind)
+		m.clampCursor()
+	case "S":
+		m.filter.Status = next(statusOptions(m.records), m.filter.Status)
+		m.clampCursor()
+	case "R":
+		m.filter.Repo = next(repoOptions(m.records), m.filter.Repo)
+		m.clampCursor()
+	case "T":
+		m.filter.Tag = next(tagOptions(m.records), m.filter.Tag)
+		m.clampCursor()
 	}
+	return nil
+}
+
+// handleFilterKey edits the text query in memory. Enter keeps the query and
+// leaves editing; esc clears it; every printable key narrows the list.
+func (m *Model) handleFilterKey(key tea.KeyPressMsg) tea.Cmd {
+	switch key.String() {
+	case "ctrl+c":
+		m.quitting = true
+		return tea.Quit
+	case "enter":
+		m.filtering = false
+	case "esc":
+		m.filtering = false
+		m.filter.Query = ""
+	case "backspace":
+		m.filter.Query = dropLastRune(m.filter.Query)
+	default:
+		if key.Text != "" {
+			m.filter.Query += key.Text
+		}
+	}
+	m.clampCursor()
 	return nil
 }
 
@@ -236,9 +281,20 @@ func (m *Model) openDetail() tea.Cmd {
 	}
 }
 
-// visible returns the loaded documents the list view shows. Filtering narrows
-// this in memory from 5.2; nothing here reads from disk.
-func (m *Model) visible() []vault.IndexRecord { return m.records }
+// visible returns the loaded documents that pass the current filter, in the
+// order the store returned them. It reads nothing from disk.
+func (m *Model) visible() []vault.IndexRecord {
+	if m.filter == (Filter{}) {
+		return m.records
+	}
+	out := make([]vault.IndexRecord, 0, len(m.records))
+	for _, record := range m.records {
+		if m.filter.matches(record) {
+			out = append(out, record)
+		}
+	}
+	return out
+}
 
 // move shifts the selection by delta, clamped to the visible list.
 func (m *Model) move(delta int) {
@@ -284,6 +340,9 @@ func (m *Model) renderList() string {
 		header += fmt.Sprintf(", %d unreadable", len(m.warnings))
 	}
 	lines := []string{header}
+	if summary := m.filter.summary(); summary != "" {
+		lines = append(lines, "filter: "+summary)
+	}
 	if m.err != nil {
 		lines = append(lines, "error: "+m.err.Error())
 	}
@@ -311,7 +370,7 @@ func (m *Model) renderList() string {
 		}
 		lines = append(lines, strings.Join(parts, "  "))
 	}
-	lines = append(lines, "j/k move · enter open · c create · ? help · q quit")
+	lines = append(lines, "j/k move · enter open · / filter · c create · ? help · q quit")
 	return frame(lines, m.width)
 }
 

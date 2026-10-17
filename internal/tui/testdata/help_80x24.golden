@@ -4,6 +4,11 @@ j, down         move the selection down
 k, up           move the selection up
 enter           open the selected document
 esc             go back or cancel
+/               filter the list as you type
+K               cycle the kind filter
+S               cycle the status filter
+R               cycle the repo filter
+T               cycle the tag filter
 r               reload the vault from disk
 c               create a document
 tab             switch kind in the create prompt
