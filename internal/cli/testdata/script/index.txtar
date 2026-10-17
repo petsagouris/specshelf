@@ -1,0 +1,22 @@
+# index regenerates index.jsonl silently and its row follows the documents.
+exec specshelf --home $WORK/vault index
+! stdout .
+exists $WORK/vault/index.jsonl
+grep 'spec-20261017-alpha' $WORK/vault/index.jsonl
+
+# --print reports the index path on stdout.
+exec specshelf --home $WORK/vault index --print
+cmpenv stdout print.stdout
+
+-- print.stdout --
+$WORK/vault/index.jsonl
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+---
+# Alpha
