@@ -173,16 +173,17 @@ def main():
         # Title and description are both derived from the task text, so an edit
         # to either the labelling rule or tasks.md reconciles the board instead of
         # leaving it showing something older.
-        updates = []
+        updates, changed = [], []
         if bead.get("title") != want_title:
             updates += ["--title", want_title]
             retitled += 1
+            changed.append("title")
         if (bead.get("description") or "") != task["text"]:
             updates += ["-d", task["text"]]
             described += 1
+            changed.append("description")
         if updates:
-            changed = ",".join("title" if u == "--title" else "description" for u in updates if not u.startswith("["))
-            print(f"reconciling {bead['id']} ({task['id']}): {changed}")
+            print(f"reconciling {bead['id']} ({task['id']}): {', '.join(changed)}")
             bd(["update", bead["id"], *updates], dry_run)
 
         want = "closed" if task["done"] else "open"
