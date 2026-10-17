@@ -80,6 +80,15 @@ func TestResolvePrecedence(t *testing.T) {
 		assertResolved(t, res, err, "/from-flag", SourceHome)
 	})
 
+	t.Run("a relative --home resolves to an absolute root", func(t *testing.T) {
+		t.Setenv("SPECSHELF_HOME", "")
+		configFile(t, "")
+		dir := t.TempDir()
+		t.Chdir(dir)
+		res, err := Resolve(Selectors{Home: "relative/vault"}, home)
+		assertResolved(t, res, err, filepath.Join(dir, "relative", "vault"), SourceHome)
+	})
+
 	t.Run("--vault resolves through the config and beats its default", func(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "")
 		configFile(t, namedVaultsConfig)

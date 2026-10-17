@@ -14,7 +14,14 @@ exec specshelf --home $WORK/vault init
 cmpenv stdout init.stdout
 grep 'user edit survives' $WORK/vault/templates/spec.md
 
+# A relative --home is resolved to an absolute root, as the reference does.
+exec specshelf --home rel-vault init
+cmpenv stdout relinit.stdout
+exists $WORK/rel-vault/specs
+
 -- init.stdout --
 $WORK/vault
+-- relinit.stdout --
+$WORK/rel-vault
 -- edited-template.md --
 # user edit survives

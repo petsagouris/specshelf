@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -122,6 +123,182 @@ func TestLinkSessionsMergesAndRefreshes(t *testing.T) {
 
 	if _, err := LinkSessions(root, doc.ID(), nil); err == nil {
 		t.Error("LinkSessions with no sessions succeeded, want an error")
+	}
+}
+
+// fakeEditor stands in for a user's editor in the store tests: appendText is
+// written onto the document, so an empty appendText is an editor that changed
+// nothing.
+type fakeEditor struct{ appendText string }
+
+func (e fakeEditor) Edit(path string) error {
+	if e.appendText == "" {
+		return nil
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(e.appendText); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// An editor that changes nothing must leave both the document and the index
+// byte-for-byte as they were: updated moves only when the content did. The
+// document's dated fields are deliberately stale, so a bump would show.
+func TestEditLeavesAnUnchangedDocumentAlone(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "specs", "2026-10-17-note.md")
+	writeDoc(t, root, "specs/2026-10-17-note.md",
+		"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\ncreated: 2000-01-01\nupdated: 2000-01-01\n---\n# Note\n")
+	if err := WriteIndex(root); err != nil {
+		t.Fatal(err)
+	}
+	before := mustRead(t, path)
+	indexBefore := mustRead(t, filepath.Join(root, "index.jsonl"))
+
+	got, err := Edit(root, "spec-20261017-note", fakeEditor{})
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	if got != path {
+		t.Errorf("Edit returned %q, want %q", got, path)
+	}
+	if after := mustRead(t, path); !bytes.Equal(after, before) {
+		t.Errorf("document changed:\n got %q\nwant %q", after, before)
+	}
+	if after := mustRead(t, filepath.Join(root, "index.jsonl")); !bytes.Equal(after, indexBefore) {
+		t.Errorf("index changed:\n got %q\nwant %q", after, indexBefore)
+	}
+}
+
+// A changed document is stamped with today's date and the index follows, while
+// the editor's body and the document's unknown keys survive the rewrite.
+func TestEditStampsChangedDocumentAndRefreshesIndex(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-note.md",
+		"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\ncreated: 2000-01-01\nupdated: 2000-01-01\npriority: high\n---\n# Note\n")
+
+	got, err := Edit(root, "spec-20261017-note", fakeEditor{appendText: "\n\nchanged by the editor\n"})
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	if want := filepath.Join(root, "specs", "2026-10-17-note.md"); got != want {
+		t.Errorf("Edit returned %q, want %q", got, want)
+	}
+
+	doc, err := readDocument(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Updated() != localDate(time.Now()) {
+		t.Errorf("updated = %q, want today %q", doc.Updated(), localDate(time.Now()))
+	}
+	if doc.Created() != "2000-01-01" {
+		t.Errorf("created = %q, want it untouched", doc.Created())
+	}
+	if doc.Title() != "Note" || doc.Status() != "active" || doc.Kind() != "spec" {
+		t.Errorf("rewrite changed id/kind/title/status: %+v", doc.Metadata)
+	}
+	if !strings.Contains(doc.Body, "changed by the editor") {
+		t.Errorf("body = %q, want the editor's text", doc.Body)
+	}
+	if doc.Metadata["priority"] != "high" {
+		t.Errorf("unknown key priority = %v, want it preserved", doc.Metadata["priority"])
+	}
+	records, err := Index(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || !strings.Contains(records[0].Summary, "changed by the editor") {
+		t.Errorf("index = %+v, want the edited body's summary", records)
+	}
+}
+
+// A failing editor leaves the document as it was.
+func TestEditLeavesDocumentWhenTheEditorFails(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-note.md",
+		"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\ncreated: 2000-01-01\nupdated: 2000-01-01\n---\n# Note\n")
+	before := mustRead(t, filepath.Join(root, "specs", "2026-10-17-note.md"))
+
+	if _, err := Edit(root, "spec-20261017-note", errEditor{}); err == nil {
+		t.Fatal("Edit succeeded although the editor failed")
+	}
+	if after := mustRead(t, filepath.Join(root, "specs", "2026-10-17-note.md")); !bytes.Equal(after, before) {
+		t.Errorf("document changed after a failed editor:\n got %q\nwant %q", after, before)
+	}
+}
+
+type errEditor struct{}
+
+func (errEditor) Edit(string) error { return os.ErrPermission }
+
+// SetStatus sets the frontmatter status, bumps updated to today and refreshes
+// the index, leaving created and the body alone.
+func TestSetStatusSetsStatusAndBumpsDate(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-note.md",
+		"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\ncreated: 2000-01-01\nupdated: 2000-01-01\n---\n# Note\n")
+
+	got, err := SetStatus(root, "2026-10-17-note", "accepted")
+	if err != nil {
+		t.Fatalf("SetStatus: %v", err)
+	}
+	doc, err := readDocument(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Status() != "accepted" {
+		t.Errorf("status = %q, want accepted", doc.Status())
+	}
+	if doc.Updated() != localDate(time.Now()) {
+		t.Errorf("updated = %q, want today %q", doc.Updated(), localDate(time.Now()))
+	}
+	if doc.Created() != "2000-01-01" {
+		t.Errorf("created = %q, want it untouched", doc.Created())
+	}
+	if !strings.Contains(doc.Body, "# Note") {
+		t.Errorf("body = %q, want it untouched", doc.Body)
+	}
+	records, err := Index(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].Status != "accepted" {
+		t.Errorf("index = %+v, want the new status", records)
+	}
+}
+
+// Remove deletes the document and its index line, and an unknown reference
+// removes nothing.
+func TestRemoveDeletesAndRefreshesIndex(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-note.md",
+		"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\ncreated: 2000-01-01\nupdated: 2000-01-01\n---\n# Note\n")
+	if err := WriteIndex(root); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Remove(root, "spec-20261017-note")
+	if err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if want := filepath.Join(root, "specs", "2026-10-17-note.md"); got != want {
+		t.Errorf("Remove returned %q, want %q", got, want)
+	}
+	if _, err := os.Stat(got); err == nil {
+		t.Errorf("%s still exists after Remove", got)
+	}
+	if bytes.Contains(mustRead(t, filepath.Join(root, "index.jsonl")), []byte("spec-20261017-note")) {
+		t.Error("the removed document is still indexed")
+	}
+
+	if _, err := Remove(root, "2026-10-17-note"); err == nil {
+		t.Error("Remove of an unknown reference succeeded, want an error")
 	}
 }
 

@@ -1,0 +1,32 @@
+# rm --dry-run reports the path that would be removed and changes nothing: the
+# document stays and the index is not regenerated (the sentinel survives).
+cp sentinel.jsonl vault/index.jsonl
+exec specshelf --home $WORK/vault rm spec-20261017-note --dry-run
+cmpenv stdout rm.stdout
+exists vault/specs/2026-10-17-note.md
+cmp vault/index.jsonl sentinel.jsonl
+
+# rm removes the document and its index line.
+exec specshelf --home $WORK/vault rm spec-20261017-note
+cmpenv stdout rm.stdout
+! exists vault/specs/2026-10-17-note.md
+! grep 'spec-20261017-note' vault/index.jsonl
+
+# An unknown reference removes nothing and fails.
+! exec specshelf --home $WORK/vault rm missing
+stderr '^specshelf: unknown reference "missing"$'
+
+-- rm.stdout --
+$WORK/vault/specs/2026-10-17-note.md
+-- sentinel.jsonl --
+stale index: a dry-run removal must not regenerate this
+-- vault/specs/2026-10-17-note.md --
+---
+id: spec-20261017-note
+kind: spec
+title: Note
+status: active
+created: 2000-01-01
+updated: 2000-01-01
+---
+# Note

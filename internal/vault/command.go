@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -118,10 +119,7 @@ func LinkSessions(root, ref string, sessions []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	metadata := make(frontmatter.Metadata, len(doc.Metadata)+1)
-	for key, value := range doc.Metadata {
-		metadata[key] = value
-	}
+	metadata := copyMetadata(doc.Metadata)
 	metadata["codex_sessions"] = mergeUnique(doc.CodexSessions(), sessions)
 	metadata["updated"] = localDate(time.Now())
 	out := frontmatter.Document{Name: doc.Name, Metadata: metadata, Body: doc.Body}
@@ -132,6 +130,17 @@ func LinkSessions(root, ref string, sessions []string) (string, error) {
 		return "", err
 	}
 	return doc.Name, nil
+}
+
+// copyMetadata returns a shallow copy of a document's metadata, so a rewrite can
+// set fields without mutating the document it read. Unknown keys ride along and
+// keep their document's shape.
+func copyMetadata(in frontmatter.Metadata) frontmatter.Metadata {
+	out := make(frontmatter.Metadata, len(in)+1)
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
 }
 
 // mergeUnique concatenates two lists, trims each item, drops empty ones and
@@ -172,4 +181,85 @@ func Find(root, ref string) (Found, error) {
 		return Found{}, fmt.Errorf("read %s: %w", doc.Name, err)
 	}
 	return Found{Path: doc.Name, Data: data}, nil
+}
+
+// Editor opens one document for interactive editing and returns when the editor
+// has exited. A command supplies the implementation, so tests can inject a fake
+// and the session reuses the same seam (D11).
+type Editor interface {
+	Edit(path string) error
+}
+
+// Edit resolves ref, hands the document to editor, and — only when the editor
+// left different bytes behind — stamps updated with today's date, rewrites the
+// document atomically and refreshes the index. It returns the document's path.
+// An editor that changed nothing leaves the file and the index exactly as they
+// were, because nothing on disk changed. Unknown keys, the body, id, kind and
+// created are the editor's to keep: the rewrite re-reads the file and re-emits
+// it through the shared writer.
+func Edit(root, ref string, editor Editor) (string, error) {
+	found, err := Find(root, ref)
+	if err != nil {
+		return "", err
+	}
+	if err := editor.Edit(found.Path); err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(found.Path)
+	if err != nil {
+		return "", fmt.Errorf("read %s: %w", found.Path, err)
+	}
+	if bytes.Equal(data, found.Data) {
+		return found.Path, nil
+	}
+	doc, err := frontmatter.Parse(found.Path, data)
+	if err != nil {
+		return "", err
+	}
+	metadata := copyMetadata(doc.Metadata)
+	metadata["updated"] = localDate(time.Now())
+	out := frontmatter.Document{Name: doc.Name, Metadata: metadata, Body: doc.Body}
+	if err := WriteDocument(found.Path, frontmatter.Marshal(out)); err != nil {
+		return "", err
+	}
+	if err := WriteIndex(root); err != nil {
+		return "", err
+	}
+	return found.Path, nil
+}
+
+// SetStatus sets the document's frontmatter status, stamps updated with today's
+// date, rewrites it atomically and refreshes the index. It returns the path.
+func SetStatus(root, ref, status string) (string, error) {
+	doc, err := ResolveReference(root, ref)
+	if err != nil {
+		return "", err
+	}
+	metadata := copyMetadata(doc.Metadata)
+	metadata["status"] = status
+	metadata["updated"] = localDate(time.Now())
+	out := frontmatter.Document{Name: doc.Name, Metadata: metadata, Body: doc.Body}
+	if err := WriteDocument(doc.Name, frontmatter.Marshal(out)); err != nil {
+		return "", err
+	}
+	if err := WriteIndex(root); err != nil {
+		return "", err
+	}
+	return doc.Name, nil
+}
+
+// Remove deletes the document ref names and refreshes the index, which is
+// written atomically like every other refresh. It returns the path it removed.
+func Remove(root, ref string) (string, error) {
+	doc, err := ResolveReference(root, ref)
+	if err != nil {
+		return "", err
+	}
+	if err := os.Remove(doc.Name); err != nil {
+		return "", fmt.Errorf("remove %s: %w", doc.Name, err)
+	}
+	if err := WriteIndex(root); err != nil {
+		return "", err
+	}
+	return doc.Name, nil
 }

@@ -6,5 +6,11 @@ cmpenv stdout path.stdout
 exec specshelf path --home $WORK/vault
 cmpenv stdout path.stdout
 
+# A relative --home is resolved to an absolute root, as the reference does.
+exec specshelf --home rel-vault path
+cmpenv stdout relpath.stdout
+
 -- path.stdout --
 $WORK/vault
+-- relpath.stdout --
+$WORK/rel-vault
