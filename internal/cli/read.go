@@ -57,6 +57,20 @@ func filterValues(cmd *cobra.Command) (vault.Filters, error) {
 	return vault.Filters{Kind: kind, Repo: repo, Tag: tag, CodexSession: session, Status: status}, nil
 }
 
+// checkFormat rejects the --format values whose rendering arrives with 4.3. tsv
+// is the reference default and the only one this task implements; the colour
+// rule keys off it, because every format but table is a machine payload.
+func checkFormat(cmd *cobra.Command) error {
+	format, err := cmd.Flags().GetString("format")
+	if err != nil {
+		return err
+	}
+	if format != "tsv" {
+		return usagef("invalid argument %q for \"--format\" flag: must be tsv", format)
+	}
+	return nil
+}
+
 // printWarnings writes one stderr line per skipped document.
 func printWarnings(cmd *cobra.Command, warnings []vault.Warning) {
 	for _, warning := range warnings {
@@ -77,6 +91,9 @@ func newListCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			resolution, err := resolveVault(cmd)
 			if err != nil {
+				return err
+			}
+			if err := checkFormat(cmd); err != nil {
 				return err
 			}
 			filters, err := filterValues(cmd)
@@ -110,6 +127,7 @@ func newListCommand() *cobra.Command {
 	addFilterFlags(cmd)
 	cmd.Flags().IntVar(&limit, "limit", 50, "Maximum number of documents to list.")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit JSONL records.")
+	cmd.Flags().String("format", "tsv", "Output format: tsv.")
 	return cmd
 }
 
@@ -123,6 +141,9 @@ func newSearchCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			resolution, err := resolveVault(cmd)
 			if err != nil {
+				return err
+			}
+			if err := checkFormat(cmd); err != nil {
 				return err
 			}
 			filters, err := filterValues(cmd)
@@ -149,6 +170,7 @@ func newSearchCommand() *cobra.Command {
 		},
 	}
 	addFilterFlags(cmd)
+	cmd.Flags().String("format", "tsv", "Output format: tsv.")
 	return cmd
 }
 
@@ -198,12 +220,16 @@ func newPrimeCommand() *cobra.Command {
 			printWarnings(cmd, warnings)
 			records = limitRecords(records, limit)
 
+			painter, err := displayStyle(cmd, jsonOut)
+			if err != nil {
+				return err
+			}
 			out := cmd.OutOrStdout()
 			if jsonOut {
 				_, err = out.Write(vault.EncodeIndex(records))
 				return err
 			}
-			return writePrime(out, resolution.Root, records)
+			return writePrime(out, resolution.Root, records, painter)
 		},
 	}
 
@@ -213,16 +239,17 @@ func newPrimeCommand() *cobra.Command {
 	return cmd
 }
 
-// writePrime renders the reference tool's Markdown summary.
-func writePrime(out io.Writer, root string, records []vault.IndexRecord) error {
-	if _, err := fmt.Fprintf(out, "# Agent Spec Vault\n\nVault: `%s`\n\n", root); err != nil {
+// writePrime renders the reference tool's Markdown summary, colouring its
+// headings when the caller's style is on.
+func writePrime(out io.Writer, root string, records []vault.IndexRecord, painter style) error {
+	if _, err := fmt.Fprintf(out, "%s\n\nVault: `%s`\n\n", painter.bold("# Agent Spec Vault"), root); err != nil {
 		return err
 	}
 	if len(records) == 0 {
 		_, err := fmt.Fprintln(out, "No matching specs or decisions found.")
 		return err
 	}
-	if _, err := fmt.Fprint(out, "## Relevant Specs And Decisions\n\n"); err != nil {
+	if _, err := fmt.Fprint(out, painter.bold("## Relevant Specs And Decisions")+"\n\n"); err != nil {
 		return err
 	}
 	for _, record := range records {
