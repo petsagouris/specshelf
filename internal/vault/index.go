@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/petsagouris/specshelf/internal/frontmatter"
@@ -75,6 +76,18 @@ func Index(root string) ([]IndexRecord, error) {
 		}
 	}
 	return records, nil
+}
+
+// WriteIndex regenerates index.jsonl from the vault's documents and writes it
+// atomically, so a reader never sees a half-written index. A document it cannot
+// read fails the whole refresh; List is the tolerant alternative. Every
+// mutating command calls this before it exits.
+func WriteIndex(root string) error {
+	records, err := Index(root)
+	if err != nil {
+		return err
+	}
+	return WriteDocument(filepath.Join(root, "index.jsonl"), EncodeIndex(records))
 }
 
 // readIndexRecord reads one document and builds its record. A file that cannot
