@@ -12,8 +12,9 @@ interchangeable in both directions.
 ### Requirement: Vault directory layout
 
 A vault root SHALL contain the directories `specs/` and `decisions/`, the
-directory `templates/` holding `spec.md` and `decision.md`, and the files
-`README.md` and `index.jsonl`. Initialising a vault SHALL create anything
+directory `templates/` holding `spec.md` and `decision.md`, and the file
+`README.md`. The index file `index.jsonl` SHALL be produced by the index step
+rather than by initialisation. Initialising a vault SHALL create anything
 missing and SHALL NOT overwrite a file that already exists, so user edits to
 templates and README survive.
 
@@ -58,6 +59,21 @@ reported as an error naming the file.
 
 - **WHEN** a document written by the Python tool has `title: Decision: use #1 approach`
 - **THEN** the parsed title is exactly `Decision: use #1 approach`
+
+#### Scenario: CRLF line endings
+
+- **WHEN** a document saved with Windows line endings opens with a frontmatter fence
+- **THEN** its metadata is read normally, and a document written back later uses LF endings
+
+#### Scenario: Quoted values are unquoted
+
+- **WHEN** a field carries a single- or double-quoted value, as the writer emits for values that need quoting
+- **THEN** the value is read without its surrounding quotes
+
+#### Scenario: Empty frontmatter block
+
+- **WHEN** the closing fence immediately follows the opening fence
+- **THEN** the document has empty metadata and its body is everything after the fence, rather than being unreadable
 
 #### Scenario: Empty values mean the empty scalar
 

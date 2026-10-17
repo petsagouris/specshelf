@@ -65,6 +65,31 @@ Never point a command at the real vault. Tests use temporary directories.
 `testdata/` holds generated fixtures from the Python reference implementation and
 must not be hand-edited.
 
+## Parallel work
+
+Independent tasks run in **git worktrees**, one per task, so no agent ever edits
+the same checkout as another:
+
+```
+git worktree add -b wt/<task-id> /tmp/opencode/worktrees/<task-id>
+```
+
+Rules:
+
+- One agent owns one worktree, and one worktree carries one task.
+- Commit before creating a worktree. A worktree branches from a commit, so
+  branching from a dirty main checkout gives the agent a tree missing the work it
+  depends on.
+- The agent commits on its branch and reports the hash; the main agent reviews
+  the diff before merging anything. Nothing is merged unreviewed.
+- Never edit `tasks.md` or anything under `openspec/` in a worktree. Those are
+  single-writer files in the main checkout, and a tick made on a branch is lost.
+- A worktree is for tasks whose files are disjoint from work in flight. Two
+  agents editing one package is not parallelism, it is a merge conflict with
+  extra steps; combine those tasks into one worktree and one agent instead.
+- Read-only work — research, verification passes, an independent review of
+  something already written — needs no worktree. Say so in the brief.
+
 ## Subagent brief
 
 Every delegation must contain all six of these, or it is not ready to send:
