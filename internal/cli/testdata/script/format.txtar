@@ -1,0 +1,100 @@
+# list and search accept --format tsv|table|csv|jsonl, defaulting to the
+# reference tsv, and every format carries the index record's field names.
+
+# The default is tsv: --format tsv is the same bytes.
+exec specshelf --home $WORK/vault list
+cmp stdout tsv.stdout
+exec specshelf --home $WORK/vault list --format tsv
+cmp stdout tsv.stdout
+
+# --json and --format jsonl are the same index-record lines.
+exec specshelf --home $WORK/vault list --json
+cmp stdout jsonl.stdout
+exec specshelf --home $WORK/vault list --format jsonl
+cmp stdout jsonl.stdout
+
+# csv adds a header row of the index field names, in the TSV column order.
+exec specshelf --home $WORK/vault list --format csv
+cmp stdout csv.stdout
+
+# table is the human format: a header naming every column.
+exec specshelf --home $WORK/vault list --format table
+stdout 'id\s+kind\s+status\s+updated\s+repos\s+tags\s+codex_sessions\s+path\s+title'
+stdout 'spec-20261017-alpha'
+
+# A machine format never carries escapes, even with colour forced on; a table
+# piped to a file does not either, but --color always may.
+exec specshelf --home $WORK/vault list --format csv --color always
+! stdout '\x1b'
+exec specshelf --home $WORK/vault list --format table
+! stdout '\x1b'
+exec specshelf --home $WORK/vault list --format table --color always
+stdout '\x1b\[1m'
+
+# --json and a disagreeing --format is a usage error.
+! exec specshelf --home $WORK/vault list --json --format csv
+stderr 'cannot be combined'
+
+# search carries the same four formats.
+exec specshelf --home $WORK/vault search needle --json
+cmp stdout search_json.stdout
+exec specshelf --home $WORK/vault search needle --format csv
+cmp stdout search_csv.stdout
+
+# show --json is the document's index record; path --json names the selector.
+exec specshelf --home $WORK/vault show spec-20261017-alpha --json
+cmp stdout show_json.stdout
+exec specshelf --home $WORK/vault path --json
+cmpenv stdout path_json.stdout
+
+-- tsv.stdout --
+spec-20261017-alpha	spec	active	2026-10-17	billing	tooling	s1	specs/2026-10-17-alpha.md	Alpha
+decision-20261017-gamma	decision	accepted	2026-10-17	-	tooling	-	decisions/2026-10-17-gamma.md	Gamma
+-- jsonl.stdout --
+{"id": "spec-20261017-alpha", "kind": "spec", "title": "Alpha", "status": "active", "created": "2026-10-17", "updated": "2026-10-17", "repos": ["billing"], "tags": ["tooling"], "codex_sessions": ["s1"], "path": "specs/2026-10-17-alpha.md", "summary": "line two"}
+{"id": "decision-20261017-gamma", "kind": "decision", "title": "Gamma", "status": "accepted", "created": "2026-10-17", "updated": "2026-10-17", "repos": [], "tags": ["tooling"], "codex_sessions": [], "path": "decisions/2026-10-17-gamma.md", "summary": ""}
+-- csv.stdout --
+id,kind,status,updated,repos,tags,codex_sessions,path,title
+spec-20261017-alpha,spec,active,2026-10-17,billing,tooling,s1,specs/2026-10-17-alpha.md,Alpha
+decision-20261017-gamma,decision,accepted,2026-10-17,-,tooling,-,decisions/2026-10-17-gamma.md,Gamma
+-- search_json.stdout --
+{"id":"spec-20261017-alpha","kind":"spec","path":"specs/2026-10-17-alpha.md","line":5,"snippet":"needle here"}
+-- search_csv.stdout --
+id,kind,location,snippet
+spec-20261017-alpha,spec,specs/2026-10-17-alpha.md:5,needle here
+-- show_json.stdout --
+{"id": "spec-20261017-alpha", "kind": "spec", "title": "Alpha", "status": "active", "created": "2026-10-17", "updated": "2026-10-17", "repos": ["billing"], "tags": ["tooling"], "codex_sessions": ["s1"], "path": "specs/2026-10-17-alpha.md", "summary": "line two"}
+-- path_json.stdout --
+{"root":"$WORK/vault","source":"--home"}
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - billing
+tags:
+  - tooling
+codex_sessions:
+  - s1
+---
+# Alpha
+
+line two
+
+needle here
+-- vault/decisions/2026-10-17-gamma.md --
+---
+id: decision-20261017-gamma
+kind: decision
+title: Gamma
+status: accepted
+created: 2026-10-17
+updated: 2026-10-17
+tags:
+  - tooling
+---
+# Gamma
