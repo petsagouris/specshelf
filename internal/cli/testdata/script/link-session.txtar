@@ -1,0 +1,36 @@
+# link-session appends the sessions, stamps updated, and prints the path.
+exec specshelf --home $WORK/vault link-session 2026-10-17-note --codex-session s1,s2
+cmpenv stdout link.stdout
+grep 'codex_sessions:' $WORK/vault/specs/2026-10-17-note.md
+grep '  - s1' $WORK/vault/specs/2026-10-17-note.md
+grep '  - s2' $WORK/vault/specs/2026-10-17-note.md
+grep 'updated: \d{4}-\d{2}-\d{2}' $WORK/vault/specs/2026-10-17-note.md
+
+# Linking again merges without duplicating what is already there.
+exec specshelf --home $WORK/vault link-session 2026-10-17-note --codex-session s2,s3
+grep -count=1 '  - s2' $WORK/vault/specs/2026-10-17-note.md
+grep '  - s3' $WORK/vault/specs/2026-10-17-note.md
+
+# The index follows the rewrite.
+exec specshelf --home $WORK/vault list
+stdout 's1,s2,s3'
+
+# No session ids is a runtime failure.
+! exec specshelf --home $WORK/vault link-session 2026-10-17-note
+stderr '^specshelf: at least one Codex session id is required$'
+
+-- link.stdout --
+$WORK/vault/specs/2026-10-17-note.md
+-- vault/specs/2026-10-17-note.md --
+---
+id: spec-20261017-note
+kind: spec
+title: Note
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+tags:
+codex_sessions:
+---
+# Note

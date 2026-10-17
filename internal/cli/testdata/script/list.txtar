@@ -1,0 +1,71 @@
+# list prints the reference nine-column TSV, ordered by updated then id
+# descending.
+exec specshelf --home $WORK/vault list
+cmp stdout list.stdout
+
+# Filters are ANDed.
+exec specshelf --home $WORK/vault list --kind decision --tag tooling
+cmp stdout filtered.stdout
+
+# --limit caps the rows.
+exec specshelf --home $WORK/vault list --limit 1
+cmp stdout limited.stdout
+
+# --json emits one index record per line.
+exec specshelf --home $WORK/vault list --json
+cmp stdout list_json.stdout
+
+-- list.stdout --
+spec-20261017-alpha	spec	active	2026-10-17	billing	tooling	s1	specs/2026-10-17-alpha.md	Alpha
+decision-20261017-gamma	decision	accepted	2026-10-17	-	tooling	-	decisions/2026-10-17-gamma.md	Gamma
+spec-20261017-beta	spec	active	2026-10-16	-	-	-	specs/2026-10-17-beta.md	Beta
+-- filtered.stdout --
+decision-20261017-gamma	decision	accepted	2026-10-17	-	tooling	-	decisions/2026-10-17-gamma.md	Gamma
+-- limited.stdout --
+spec-20261017-alpha	spec	active	2026-10-17	billing	tooling	s1	specs/2026-10-17-alpha.md	Alpha
+-- list_json.stdout --
+{"id": "spec-20261017-alpha", "kind": "spec", "title": "Alpha", "status": "active", "created": "2026-10-17", "updated": "2026-10-17", "repos": ["billing"], "tags": ["tooling"], "codex_sessions": ["s1"], "path": "specs/2026-10-17-alpha.md", "summary": "line two"}
+{"id": "decision-20261017-gamma", "kind": "decision", "title": "Gamma", "status": "accepted", "created": "2026-10-17", "updated": "2026-10-17", "repos": [], "tags": ["tooling"], "codex_sessions": [], "path": "decisions/2026-10-17-gamma.md", "summary": ""}
+{"id": "spec-20261017-beta", "kind": "spec", "title": "Beta", "status": "active", "created": "2026-10-17", "updated": "2026-10-16", "repos": [], "tags": [], "codex_sessions": [], "path": "specs/2026-10-17-beta.md", "summary": ""}
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - billing
+tags:
+  - tooling
+codex_sessions:
+  - s1
+---
+# Alpha
+
+line two
+
+needle here
+-- vault/specs/2026-10-17-beta.md --
+---
+id: spec-20261017-beta
+kind: spec
+title: Beta
+status: active
+created: 2026-10-17
+updated: 2026-10-16
+---
+# Beta
+-- vault/decisions/2026-10-17-gamma.md --
+---
+id: decision-20261017-gamma
+kind: decision
+title: Gamma
+status: accepted
+created: 2026-10-17
+updated: 2026-10-17
+tags:
+  - tooling
+---
+# Gamma

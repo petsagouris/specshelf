@@ -92,7 +92,12 @@ func NewRootCommand() *cobra.Command {
 		newCreateCommand("new", "spec", "Create a new spec."),
 		newCreateCommand("decision", "decision", "Create a new decision note."),
 		newLinkSessionCommand(),
+		newListCommand(),
+		newSearchCommand(),
+		newShowCommand(),
 		newIndexCommand(),
+		newPrimeCommand(),
+		newPathCommand(),
 	)
 	return root
 }

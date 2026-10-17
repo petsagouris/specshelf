@@ -1,0 +1,21 @@
+# new takes the reference multi-value flags: repeated, comma-separated, trimmed
+# and de-duplicated, in first-seen order.
+exec specshelf --home $WORK/vault new 'Hello world' --repos a,b --repos b --repo c --tags x --tags ' y ' --codex-session s1 --codex-session s2,s1
+stdout 'vault/specs/\d{4}-\d{2}-\d{2}-hello-world\.md$'
+
+# The parsed flags land in the document and the index follows the write.
+exec specshelf --home $WORK/vault list
+stdout 'spec-\d{8}-hello-world\tspec\tactive\t\d{4}-\d{2}-\d{2}\ta,b,c\tx,y\ts1,s2\tspecs/\d{4}-\d{2}-\d{2}-hello-world\.md\tHello world'
+exists $WORK/vault/index.jsonl
+
+# The current-session flag reads CODEX_THREAD_ID and errors when it is unset.
+env CODEX_THREAD_ID=
+env CODEX_SESSION_ID=
+! exec specshelf --home $WORK/vault new 'No session' --current-codex-session
+stderr '^specshelf: CODEX_THREAD_ID is not set$'
+
+env CODEX_THREAD_ID=thread-9
+exec specshelf --home $WORK/vault new 'Current session' --current-codex-session
+stdout 'vault/specs/\d{4}-\d{2}-\d{2}-current-session\.md$'
+exec specshelf --home $WORK/vault list
+stdout 'thread-9'

@@ -1,0 +1,50 @@
+# search matches the metadata first and reports the title with no line suffix.
+exec specshelf --home $WORK/vault search Alpha
+cmp stdout metadata.stdout
+
+# A body match reports its 1-based line number.
+exec specshelf --home $WORK/vault search needle
+cmp stdout body.stdout
+
+# Filters narrow the search the same way they narrow list.
+exec specshelf --home $WORK/vault search tooling --kind decision
+cmp stdout filtered.stdout
+
+-- metadata.stdout --
+spec-20261017-alpha	spec	specs/2026-10-17-alpha.md	Alpha
+-- body.stdout --
+spec-20261017-alpha	spec	specs/2026-10-17-alpha.md:5	needle here
+-- filtered.stdout --
+decision-20261017-gamma	decision	decisions/2026-10-17-gamma.md	Gamma
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - billing
+tags:
+  - tooling
+codex_sessions:
+  - s1
+---
+# Alpha
+
+line two
+
+needle here
+-- vault/decisions/2026-10-17-gamma.md --
+---
+id: decision-20261017-gamma
+kind: decision
+title: Gamma
+status: accepted
+created: 2026-10-17
+updated: 2026-10-17
+tags:
+  - tooling
+---
+# Gamma
