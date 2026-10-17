@@ -102,7 +102,7 @@ def main():
         bead = bd(
             [
                 "create",
-                label(f"[M{number}]", title),
+                title,
                 "-t",
                 "epic",
                 "--external-ref",
