@@ -27,7 +27,7 @@
 
 ## 3. M2 — Store and CLI parity (v0.1.0)
 
-- [ ] 3.1 Implement vault resolution (`--home`, `SPECSHELF_HOME`, `--vault`, `--project`, config default, built-in default) with source reporting and rejection of conflicting selectors; verify tests cover each precedence step, both conflict cases and the usage exit code
+- [ ] 3.1 Implement vault resolution (`--home`, `SPECSHELF_HOME`, `--vault`, `--project`, config default, built-in default) with source reporting and rejection of conflicting selectors; verify tests cover each precedence step and both conflict cases. The flags that drive the resolution and the usage exit code belong to the command surface in 3.7, which consumes the typed errors this task returns
 - [ ] 3.2 Implement project discovery: walk up for `.specshelf`, stop at `$HOME` or the filesystem root, error when absent; verify tests cover a nested working directory, a missing vault and a marker above the home directory
 - [ ] 3.3 Implement atomic writes (temp file in the destination directory, flush, rename) and exclusive creation with `-N` retry; verify tests simulate an interrupted rename and two concurrent creations of the same title
 - [ ] 3.4 Implement unreadable-document handling: skip, one warning line on stderr naming path and reason, successful exit; verify tests assert stdout purity and the exit code, and that the same file makes `doctor` fail later (3.10)
