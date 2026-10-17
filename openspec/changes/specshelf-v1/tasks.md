@@ -62,14 +62,15 @@
 
 ## 5. M4 — Interactive session
 
-- [ ] 5.1 Add `charm.land/bubbletea/v2` and build the model with list, detail, create and help views plus key handling; verify snapshot tests of the rendered view at three terminal sizes
-- [ ] 5.2 Implement in-memory filtering and the kind/status/repo/tag filters; verify tests assert filtering narrows results without filesystem access (via a counting fake store)
+- [x] 5.1 Add `charm.land/bubbletea/v2` and build the model with list, detail, create and help views plus key handling; verify snapshot tests of the rendered view at three terminal sizes
+- [x] 5.2 Implement in-memory filtering and the kind/status/repo/tag filters; verify tests assert filtering narrows results without filesystem access (via a counting fake store)
 - [ ] 5.3 Implement the `Editor` interface and the `$EDITOR` handoff with reload and index refresh; verify tests with a fake editor cover the unchanged and changed cases, including the `updated` rule
 - [ ] 5.4 Route create, status change and delete through the store, and add the byte-identical test (session-created document versus `specshelf new`) plus an index-consistency test after deletion; verify both tests pass
 - [ ] 5.5 Implement delete confirmation and cancellation; verify the cancelled-deletion test leaves the document in place
-- [ ] 5.6 Implement the non-terminal guard and terminal restoration, including exit on resized or closed input; verify tests cover the non-TTY error and assert restoration on the quit path
-- [ ] 5.7 Add an import-boundary test asserting `internal/tui` imports neither the frontmatter codec nor the filesystem packages and depends on `internal/vault` for every mutation; verify the test fails when a direct file read is added
-- [ ] 5.8 Document the session and its key bindings in the README and verify the documented keys match the help view rendered in a test
+- [x] 5.6 Implement the non-terminal guard and terminal restoration, including exit on resized or closed input; verify tests cover the non-TTY error and assert restoration on the quit path
+- [x] 5.7 Add an import-boundary test asserting `internal/tui` imports neither the frontmatter codec nor the filesystem packages and depends on `internal/vault` for every mutation; verify the test fails when a direct file read is added
+- [x] 5.8 Document the session and its key bindings in the README and verify the documented keys match the help view rendered in a test
+- [ ] 5.9 Wire the session into the command surface: the spec lists `ui` among the nine superset commands and nothing provides it. Add the command, including the non-terminal error and its exit code, calling `tui.Run` with the vault store and the editor `internal/cli` already implements, and add a testscript script for it
 
 ## 6. M5 — Hardening and first tag
 
