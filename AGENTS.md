@@ -73,10 +73,16 @@ found mid-task — survives a context reset. The board is project-local
 (`.beads/`), derived, and never committed.
 
 ```
-scripts/bd-sync.py            # after editing tasks.md; idempotent, --dry-run supported
-bd ready                      # unblocked work
-bd update <bead-id> --claim   # take a task before starting it
+scripts/bd-sync.py                 # after editing tasks.md; idempotent, --dry-run supported
+bd ready                           # unblocked work
+bd update <bead-id> --claim        # take a task before starting it
+bd unclaim <bead-id>               # release a claim whose agent died
+bd prime                           # beads' own operational context, at runtime
 ```
+
+Note: `bd setup opencode` would append its own "track ALL work in bd" and "close
+a bead to complete" instructions to this file. Do not run it — both rules
+contradict the precedence above. Use `bd prime` for runtime context instead.
 
 - A bead exists only because a task exists. Work discovered mid-task is recorded
   in beads *and* added to `tasks.md`; the reverse never happens.
