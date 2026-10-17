@@ -34,7 +34,8 @@ Every document SHALL carry a frontmatter block delimited by `---` lines
 containing at minimum `id`, `kind`, `title`, `status`, `created`, `updated`,
 `repos`, `tags` and `codex_sessions`. `kind` SHALL be `spec` or `decision` and
 SHALL match the directory the document lives in. List fields SHALL be rendered
-as block sequences.
+as block sequences, and an empty list SHALL be written as `[]`: a bare `key:` is
+null to a YAML reader and would not read back as an empty list.
 
 #### Scenario: A created spec carries the full field set
 
@@ -72,7 +73,7 @@ reported as an error naming the file.
 
 #### Scenario: Unterminated frontmatter
 
-- **WHEN** a file begins with `---` and has no closing `---` line
+- **WHEN** a file begins with `---` and has no closing `---` line, or that line is not newline-terminated
 - **THEN** reading it fails with an error that names the file path
 
 ### Requirement: Reader tolerance beyond the reference parser
@@ -137,6 +138,11 @@ preserved unknown keys sorted by name.
 
 - **WHEN** a document titled `Fix #42: the thing` is written
 - **THEN** the emitted frontmatter parses with a standard YAML parser and round-trips the exact title
+
+#### Scenario: Dates are written bare
+
+- **WHEN** a document is written
+- **THEN** `created` and `updated` are emitted unquoted exactly as the reference tool writes them, so the bytes stay interchangeable, even though a YAML reader types them as dates rather than strings
 
 #### Scenario: Empty values are written unambiguously
 
