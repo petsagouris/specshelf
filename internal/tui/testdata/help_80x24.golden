@@ -1,0 +1,13 @@
+specshelf help
+
+j, down         move the selection down
+k, up           move the selection up
+enter           open the selected document
+esc             go back or cancel
+r               reload the vault from disk
+c               create a document
+tab             switch kind in the create prompt
+?               show this help
+q, ctrl+c       quit
+
+press esc to go back, q to quit
