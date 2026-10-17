@@ -189,6 +189,12 @@ def main():
         want = "closed" if task["done"] else "open"
         if bead["status"] == want:
             continue
+        if not task["done"] and bead["status"] == "in_progress":
+            # A claim is the execution state this mirror exists to hold, and it
+            # is invisible to tasks.md: an unticked task with a live claim is
+            # being worked on right now. Reopening it here would silently throw
+            # away the only record that an agent owns what it is editing.
+            continue
         if task["done"]:
             print(f"closing {bead['id']} ({task['id']})")
             bd(["close", bead["id"]], dry_run)

@@ -95,15 +95,12 @@ def main():
     bd(["update", bead_id, "--claim"], args.dry_run)
 
     if args.worktree:
-        bd(
-            [
-                "update",
-                bead_id,
-                "--append-notes",
-                f"worktree {args.worktree} on branch wt/{args.task_id}",
-            ],
-            args.dry_run,
-        )
+        note = f"worktree {args.worktree} on branch wt/{args.task_id}"
+        recorded = (bd(["show", bead_id, "--json"]) or [{}])[0].get("notes") or ""
+        if note in recorded:
+            print(f"note already on {bead_id}: {note}")
+        else:
+            bd(["update", bead_id, "--append-notes", note], args.dry_run)
 
     if failures:
         sys.exit("\n".join(failures))
