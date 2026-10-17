@@ -123,6 +123,14 @@ func Resolve(sel Selectors, home string) (Resolution, error) {
 	default:
 		res.Root, res.Source = filepath.Join(home, defaultVault), SourceDefault
 	}
+	// The reference resolves its home before using it, so a relative --home is
+	// reported as an absolute path. Resolution is the one place that happens;
+	// every caller downstream prints or opens what it produces.
+	root, err := filepath.Abs(res.Root)
+	if err != nil {
+		return Resolution{}, err
+	}
+	res.Root = root
 	return res, nil
 }
 
