@@ -10,7 +10,10 @@ import "github.com/petsagouris/specshelf/internal/vault"
 type Store interface {
 	List() ([]vault.IndexRecord, []vault.Warning, error)
 	Find(ref string) (vault.Found, error)
+	Create(in vault.NewDocument) (string, error)
 	Edit(ref string) (string, error)
+	SetStatus(ref, status string) (string, error)
+	Remove(ref string) (string, error)
 }
 
 // VaultStore is the production Store. Every call forwards to internal/vault, the
@@ -33,8 +36,24 @@ func (v VaultStore) Find(ref string) (vault.Found, error) {
 	return vault.Find(v.Root, ref)
 }
 
+// Create composes a document from the vault's template, exactly as the `new`
+// and `decision` commands do.
+func (v VaultStore) Create(in vault.NewDocument) (string, error) {
+	return vault.Create(v.Root, in)
+}
+
 // Edit hands one document to the editor, which stamps updated and refreshes the
 // index only when the editor left different bytes behind.
 func (v VaultStore) Edit(ref string) (string, error) {
 	return vault.Edit(v.Root, ref, v.Editor)
+}
+
+// SetStatus sets one document's status and refreshes the index.
+func (v VaultStore) SetStatus(ref, status string) (string, error) {
+	return vault.SetStatus(v.Root, ref, status)
+}
+
+// Remove deletes one document and refreshes the index.
+func (v VaultStore) Remove(ref string) (string, error) {
+	return vault.Remove(v.Root, ref)
 }
