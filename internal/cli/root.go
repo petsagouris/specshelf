@@ -103,6 +103,7 @@ func NewRootCommand() *cobra.Command {
 		newIndexCommand(),
 		newPrimeCommand(),
 		newPathCommand(),
+		newExportCommand(),
 	)
 	return root
 }
