@@ -116,7 +116,7 @@ def main():
         if b.get("external_ref")
     }
 
-    created = closed = retitled = reopened = 0
+    created = closed = retitled = described = reopened = 0
     epics = {}
 
     for number, title in milestones:
@@ -170,12 +170,20 @@ def main():
             created += 1
             continue
 
-        # Titles are derived, so changing how a label is built reconciles the
-        # board instead of leaving it showing an older label.
+        # Title and description are both derived from the task text, so an edit
+        # to either the labelling rule or tasks.md reconciles the board instead of
+        # leaving it showing something older.
+        updates = []
         if bead.get("title") != want_title:
-            print(f"retitling {bead['id']} ({task['id']})")
-            bd(["update", bead["id"], "--title", want_title], dry_run)
+            updates += ["--title", want_title]
             retitled += 1
+        if (bead.get("description") or "") != task["text"]:
+            updates += ["-d", task["text"]]
+            described += 1
+        if updates:
+            changed = ",".join("title" if u == "--title" else "description" for u in updates if not u.startswith("["))
+            print(f"reconciling {bead['id']} ({task['id']}): {changed}")
+            bd(["update", bead["id"], *updates], dry_run)
 
         want = "closed" if task["done"] else "open"
         if bead["status"] == want:
@@ -200,7 +208,8 @@ def main():
 
     print(
         f"{len(tasks)} tasks and {len(milestones)} milestones mirrored: "
-        f"{created} created, {closed} closed, {retitled} retitled, {reopened} reopened"
+        f"{created} created, {closed} closed, {retitled} retitled, "
+        f"{described} described, {reopened} reopened"
         + (" (dry run)" if dry_run else "")
     )
     if failures:
