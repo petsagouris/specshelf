@@ -14,11 +14,40 @@ written down.
 
 ## Install
 
-Not released yet. Until the first tag the only way to build is from a checkout:
+Requires Go 1.26 or newer.
+
+```bash
+go install github.com/petsagouris/specshelf/cmd/specshelf@latest
+```
+
+From a checkout, install the working copy instead:
 
 ```bash
 go install ./cmd/specshelf
 ```
+
+## Quickstart
+
+The vault lives at `~/.agents/spec-vault` unless `--home`, `SPECSHELF_HOME` or
+the configuration file names another. Create a vault, add a document, and read
+it back:
+
+```bash
+# Create the vault layout in its default location.
+specshelf init
+
+# Add a spec, then list what the vault holds.
+specshelf new Retries --repos billing --tags reliability
+specshelf list
+
+# Search, preview the agent summary, and check the vault's health.
+specshelf search retries
+specshelf prime
+specshelf doctor
+```
+
+`specshelf --help` lists every command, and `specshelf <command> --help`
+documents its flags.
 
 ## Interactive session
 

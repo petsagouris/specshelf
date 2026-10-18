@@ -8,10 +8,11 @@ import (
 // newUICommand starts the interactive session over the resolved vault. The
 // session is handed the vault store — internal/vault is the only package that
 // touches vault files — and the same editor implementation `edit` uses.
-// tui.Run refuses to start when stdout is not a terminal, returning the error
-// this command reports on stderr with the runtime exit code; nothing is written
-// to the vault in that case, and the error points at the non-interactive
-// commands.
+// The terminal check comes before resolving an editor: a redirected run is not
+// interactive whatever editor is configured, so it reports the non-terminal
+// error rather than a missing editor. tui.Run makes the same check; here it
+// runs early enough that the editor is never resolved for a run that cannot
+// start.
 func newUICommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "ui",
@@ -21,6 +22,9 @@ func newUICommand() *cobra.Command {
 			resolution, err := resolveVault(cmd)
 			if err != nil {
 				return err
+			}
+			if !isTerminal(cmd.OutOrStdout()) {
+				return tui.NotTerminalError{}
 			}
 			editor, err := editorCommand()
 			if err != nil {

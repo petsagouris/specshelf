@@ -88,6 +88,31 @@ func TestCreateSuffixesIDAndPathTogether(t *testing.T) {
 	}
 }
 
+// A hand-picked Slug is used verbatim for the id and the file name — not
+// slugified from the title — and a collision still yields a distinct -2 id.
+func TestCreateUsesPickedSlugVerbatim(t *testing.T) {
+	root := t.TempDir()
+	first, err := Create(root, NewDocument{Kind: "spec", Title: "Some Title", Slug: "my-picked-slug", Status: "active"})
+	if err != nil {
+		t.Fatalf("first Create: %v", err)
+	}
+	date := localDate(time.Now())
+	if want := documentPath(filepath.Join(root, "specs"), date, "my-picked-slug"); first != want {
+		t.Errorf("path = %q, want %q", first, want)
+	}
+	if id, want := readID(t, first), documentID("spec", date, "my-picked-slug"); id != want {
+		t.Errorf("id = %q, want %q", id, want)
+	}
+
+	second, err := Create(root, NewDocument{Kind: "spec", Title: "Another Title", Slug: "my-picked-slug", Status: "active"})
+	if err != nil {
+		t.Fatalf("second Create: %v", err)
+	}
+	if firstID, secondID := readID(t, first), readID(t, second); secondID != firstID+"-2" {
+		t.Errorf("second id = %q, want %q", secondID, firstID+"-2")
+	}
+}
+
 // LinkSessions appends to the existing sessions, stamps updated and refreshes the
 // index, keeping the document's other fields.
 func TestLinkSessionsMergesAndRefreshes(t *testing.T) {

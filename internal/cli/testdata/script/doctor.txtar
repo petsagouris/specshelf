@@ -22,6 +22,24 @@ exitcode 1 specshelf --home $WORK/mismatch doctor
 stderr '^specshelf: specs/2026-10-17-wrong.md: kind "decision" does not match the specs directory$'
 ! stdout .
 
+# A vault that is missing the layout items init creates reports each one.
+exitcode 1 specshelf --home $WORK/empty doctor
+stderr '^specshelf: specs: missing from the vault layout$'
+stderr '^specshelf: decisions: missing from the vault layout$'
+stderr '^specshelf: templates: missing from the vault layout$'
+stderr '^specshelf: templates/spec\.md: missing from the vault layout$'
+stderr '^specshelf: templates/decision\.md: missing from the vault layout$'
+stderr '^specshelf: README\.md: missing from the vault layout$'
+stderr '^specshelf: 6 problems found$'
+! stdout .
+
+# A document whose id does not match its title is reported, not only counted.
+exec specshelf --home $WORK/identity init
+exitcode 1 specshelf --home $WORK/identity doctor
+stderr '^specshelf: specs/2026-10-17-right-title\.md: id "spec-19990101-wrong" does not match the title \(want "spec-20261017-right-title"\)$'
+stderr '^specshelf: 1 problem found$'
+! stdout .
+
 # --index regenerates the index after the report; the healthy vault exits 0.
 exec specshelf --home $WORK/healthy doctor --index
 exists $WORK/healthy/index.jsonl
@@ -41,3 +59,13 @@ created: 2026-10-17
 updated: 2026-10-17
 ---
 # Wrong
+-- identity/specs/2026-10-17-right-title.md --
+---
+id: spec-19990101-wrong
+kind: spec
+title: Right Title
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+---
+# Right Title

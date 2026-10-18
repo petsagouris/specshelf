@@ -1,0 +1,26 @@
+# --vault selects a named vault declared in the configuration file, and an
+# unknown name is a usage error that names it and lists the declared names.
+
+# A declared name selects its path, and every command operates on that vault.
+exec specshelf --vault work path
+stdout '/work-vault$'
+
+exec specshelf --vault work init
+exec specshelf --vault work new 'Named note'
+stdout 'work-vault/specs/\d{4}-\d{2}-\d{2}-named-note\.md$'
+exec specshelf --vault work list
+stdout 'spec-\d{8}-named-note\tspec\tactive'
+
+# Only the selected vault is touched; the other declared one is left alone.
+! exists $WORK/archive-vault/specs
+
+# An unknown name exits 2 and lists every declared name.
+exitcode 2 specshelf --vault personal path
+stderr '^specshelf: unknown vault "personal": declared vaults are archive, work$'
+! stdout .
+
+-- config.toml --
+[vaults.work]
+path = "work-vault"
+[vaults.archive]
+path = "archive-vault"

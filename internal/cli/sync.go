@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os/exec"
+	"strings"
 
 	"github.com/petsagouris/specshelf/internal/config"
 	"github.com/petsagouris/specshelf/internal/gitx"
@@ -48,6 +50,14 @@ func newSyncCommand() *cobra.Command {
 			case noPush:
 				doPush = false
 			}
+			// An unconfigured remote is nothing to push, not an error: the
+			// git-sync spec has the first sync in a plain directory and every
+			// repeat exit 0, and only a remote that rejects a push fails. gitx
+			// pushes to "origin" when no remote is named, so the check is
+			// against the remote that would actually be pushed to.
+			if doPush && !hasRemote(resolution.Root, remoteOrOrigin(remote)) {
+				doPush = false
+			}
 
 			result, err := gitx.Sync(gitx.Options{Root: resolution.Root, Push: doPush, Remote: remote})
 			if err != nil {
@@ -60,6 +70,31 @@ func newSyncCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&push, "push", false, "Push after committing, overriding the configured default.")
 	cmd.Flags().BoolVar(&noPush, "no-push", false, "Do not push, overriding the configured default.")
 	return cmd
+}
+
+// remoteOrOrigin is the remote a push would use: the configured one, or the
+// "origin" gitx falls back to.
+func remoteOrOrigin(remote string) string {
+	if remote == "" {
+		return "origin"
+	}
+	return remote
+}
+
+// hasRemote reports whether the vault's repository has a remote by that name. A
+// vault that is not a repository yet, or that has no such remote, has nothing
+// for a push to reach, so sync commits rather than failing.
+func hasRemote(root, name string) bool {
+	out, err := exec.Command("git", "-C", root, "remote").Output()
+	if err != nil {
+		return false
+	}
+	for _, remote := range strings.Fields(string(out)) {
+		if remote == name {
+			return true
+		}
+	}
+	return false
 }
 
 // gitSettings reads the configuration's [git] section: the remote to push to and
