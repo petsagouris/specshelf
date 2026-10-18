@@ -45,12 +45,14 @@ Linux/macOS/Windows parity, minimal runtime dependencies (see
 
 ## Decisions
 
-### D1 — Seven packages, one reason each
+### D1 — Eight packages, one reason each
 
 `cmd/specshelf` (argv→exit code only) · `internal/frontmatter` (one document's
 bytes) · `internal/vault` (the collection: resolution, discovery, CRUD, atomic
 IO, index, slug, validation) · `internal/config` · `internal/gitx` ·
-`internal/cli` · `internal/tui` · `internal/docs` (embedded templates).
+`internal/cli` · `internal/tui` · `internal/docs` (embedded templates) ·
+`internal/conformance` (the fixture comparison and the differential suite against
+the reference tool; test-only).
 
 *Alternatives*: one flat package (the format code becomes untestable in
 isolation and the TUI can reach the filesystem); a package per command (theatre
