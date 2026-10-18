@@ -84,7 +84,7 @@
 
 - [ ] 6.1 Run the full suite locally, including cross-compilation and `vet` for macOS and Windows, together with the conformance suite with Python available; verify the local run is green and, once the repository is public, that the workflow passes on all three runners with one covering test per divergence entry
 - [x] 6.2 Write `docs/ARCHITECTURE.md` describing the package boundaries and the single-writer rule, and add a test asserting the documented package list matches the directories on disk
-- [ ] 6.3 Write `CHANGELOG.md` for v0.1.0 covering the parity surface, the corrected behaviours and the new capabilities
+- [x] 6.3 Write `CHANGELOG.md` for v0.1.0 covering the parity surface, the corrected behaviours and the new capabilities
 - [ ] 6.4 Tag `v0.1.0`, then verify on Linux, macOS and Windows that `go install github.com/petsagouris/specshelf/cmd/specshelf@v0.1.0` produces a binary whose `--version` reports the tag
 - [ ] 6.5 Integration check: run the documented quickstart end to end on each operating system against a fresh vault, and run `doctor` afterwards; verify the exit codes and that no conformance divergence appears
 
