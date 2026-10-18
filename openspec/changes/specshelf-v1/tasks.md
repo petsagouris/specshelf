@@ -88,6 +88,7 @@
 - [ ] 6.4 Tag `v0.1.0`, then verify on Linux, macOS and Windows that `go install github.com/petsagouris/specshelf/cmd/specshelf@v0.1.0` produces a binary whose `--version` reports the tag
 - [x] 6.5 Integration check: run the documented quickstart end to end on each operating system against a fresh vault, and run `doctor` afterwards; verify the exit codes and that no conformance divergence appears. Run on Linux against a fresh vault by following the README's sequence with an explicit `--home`, so the real vault is never touched, and `doctor` afterwards; the macOS and Windows runs wait on a runner that has them
 
+- [ ] 6.6 Make the Windows CI run pass: the `gofmt` step on `windows-latest` exits 1 while printing nothing at all, with `test -z "$(gofmt -l .)"` as the command, no file list and no error text in the log — so the cause is unproven and the check has to be made cross-platform *and* diagnostic before it is believed. Add line-ending attributes so a Windows checkout of text files is LF and the byte-sensitive fixtures and goldens are never converted, and make the gofmt step report its exit status and output rather than swallowing them; verify with a run on all three runners
 ## Workflow follow-up
 
 - After M5, review the change with the OpenSpec verify workflow.
