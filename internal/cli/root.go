@@ -124,6 +124,7 @@ func NewRootCommand() *cobra.Command {
 		newDoctorCommand(),
 		newStatsCommand(),
 		newSyncCommand(),
+		newUICommand(),
 		newCompletionCommand(),
 		newManCommand(),
 	)
