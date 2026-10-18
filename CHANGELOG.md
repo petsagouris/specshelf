@@ -3,7 +3,7 @@
 All notable changes to `specshelf` are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-10-18
 
 `specshelf` is a Go port and superset of
 [`agent-spec-vault`](https://github.com/xixifast/agent-spec-vault) v0.1.2: the
@@ -88,11 +88,9 @@ test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
 
 ### Known limitations
 
-- This version is unreleased: `v0.1.0` is not tagged yet, so `--version` reports
-  a development marker.
-- The repository is private, so `go install
-  github.com/petsagouris/specshelf/cmd/specshelf@latest` does not resolve for
-  anyone else yet; from a checkout, `go install ./cmd/specshelf` works in the
-  meantime. CI is also disabled on GitHub while the repository is private, so
-  macOS and Windows runtime behaviour is covered by cross-compilation and `vet`
-  rather than by running the suite on those platforms.
+- Distribution is `go install
+  github.com/petsagouris/specshelf/cmd/specshelf@v0.1.0` only: no release
+  binaries, no signing and no packaging manifests. Go 1.26 or newer is required.
+  The suite runs in CI on Linux, macOS and Windows.
+- `go install` and `upgrade` both need the Go module proxy, so there is no
+  offline release artefact to fall back on.
