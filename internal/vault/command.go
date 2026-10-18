@@ -21,10 +21,13 @@ import (
 func Init(root string) error { return initVault(root) }
 
 // NewDocument is the input to Create: everything a new document carries that a
-// command can set. Kind is "spec" or "decision".
+// command can set. Kind is "spec" or "decision". Slug, when non-empty, is the
+// id and file-name segment used verbatim in place of the one derived from
+// Title, so a caller can pick a readable slug.
 type NewDocument struct {
 	Kind     string
 	Title    string
+	Slug     string
 	Repos    []string
 	Tags     []string
 	Sessions []string
@@ -45,7 +48,10 @@ func Create(root string, in NewDocument) (string, error) {
 		dirName, prefix = "decisions", "decision"
 	}
 	date := localDate(time.Now())
-	slug := slugify(in.Title)
+	slug := in.Slug
+	if slug == "" {
+		slug = slugify(in.Title)
+	}
 	body, err := seedBody(root, in.Kind, in.Title)
 	if err != nil {
 		return "", err

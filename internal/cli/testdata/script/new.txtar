@@ -27,3 +27,16 @@ exec specshelf --home $WORK/vault new 'Fallback session' --current-codex-session
 stdout 'vault/specs/\d{4}-\d{2}-\d{2}-fallback-session\.md$'
 exec specshelf --home $WORK/vault list
 stdout 'session-7'
+
+# --slug uses the hand-picked slug verbatim for the file name and the id, in
+# place of the one derived from the title.
+exec specshelf --home $WORK/slug new 'Some Title' --slug my-picked-slug
+stdout 'slug/specs/\d{4}-\d{2}-\d{2}-my-picked-slug\.md$'
+exec specshelf --home $WORK/slug list
+stdout 'spec-\d{8}-my-picked-slug\tspec\tactive'
+
+# A second document with the same slug keeps a distinct id and file name.
+exec specshelf --home $WORK/slug new 'Another Title' --slug my-picked-slug
+stdout 'slug/specs/\d{4}-\d{2}-\d{2}-my-picked-slug-2\.md$'
+exec specshelf --home $WORK/slug list
+stdout 'spec-\d{8}-my-picked-slug-2\tspec\tactive'

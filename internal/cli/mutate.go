@@ -37,7 +37,7 @@ func newInitCommand() *cobra.Command {
 func newCreateCommand(use, kind, short string) *cobra.Command {
 	var repos, tags, sessions stringList
 	var current bool
-	var status string
+	var status, slug string
 
 	cmd := &cobra.Command{
 		Use:   use + " TITLE",
@@ -55,6 +55,7 @@ func newCreateCommand(use, kind, short string) *cobra.Command {
 			path, err := vault.Create(resolution.Root, vault.NewDocument{
 				Kind:     kind,
 				Title:    args[0],
+				Slug:     slug,
 				Repos:    splitValues(repos),
 				Tags:     splitValues(tags),
 				Sessions: ids,
@@ -76,6 +77,7 @@ func newCreateCommand(use, kind, short string) *cobra.Command {
 	flags.Var(&sessions, "codex-session", "Codex thread/session id(s), comma-separated or repeated.")
 	flags.BoolVar(&current, "current-codex-session", false, "Attach CODEX_THREAD_ID from the current Codex run.")
 	flags.StringVar(&status, "status", "active", "Document status.")
+	flags.StringVar(&slug, "slug", "", "Slug for the document id and file name, used verbatim. Defaults to the title.")
 	return cmd
 }
 
