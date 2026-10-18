@@ -26,7 +26,17 @@ jobs:
       - run: go vet ./...
       - name: gofmt
         shell: bash
-        run: test -z "$(gofmt -l .)"
+        run: |
+          # Inline, a non-empty file list is swallowed by the substitution and
+          # the step fails with nothing in the log. Capture it, then print it.
+          out=$(gofmt -l .) || status=$?
+          status=${status:-0}
+          echo "gofmt -l . exit status: ${status}"
+          if [ -n "${out}" ]; then
+            echo "gofmt reported these unformatted files:"
+            echo "${out}"
+          fi
+          [ "${status}" -eq 0 ] && [ -z "${out}" ]
       - run: go test ./...
 
   lint:
