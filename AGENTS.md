@@ -45,12 +45,10 @@ Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
 
 ## Package map and the one rule
 
-`cmd/specshelf` argv → exit code · `internal/frontmatter` one document's bytes ·
-`internal/vault` resolution, discovery, CRUD, atomic IO, index, slug, validation ·
-`internal/config` · `internal/gitx` · `internal/cli` · `internal/tui` ·
-`internal/docs` embedded templates ·
-`internal/conformance` the fixture comparison and the differential suite against
-the Python reference tool.
+The package map — what each package owns and which may import which — is in
+`docs/ARCHITECTURE.md`. Its package list is the single source of truth: a test in
+`cmd/specshelf` compares it against the directories on disk, so a package added
+or removed without updating the document fails the build.
 
 **The one rule: `internal/vault` is the only package that touches vault files.**
 Every surface — CLI now, TUI in this change, MCP later — calls it. A second write
