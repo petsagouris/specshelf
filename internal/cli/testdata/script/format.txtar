@@ -45,7 +45,7 @@ cmp stdout search_csv.stdout
 exec specshelf --home $WORK/vault show spec-20261017-alpha --json
 cmp stdout show_json.stdout
 exec specshelf --home $WORK/vault path --json
-cmpenv stdout path_json.stdout
+cmppath stdout path_json.stdout
 
 -- tsv.stdout --
 spec-20261017-alpha	spec	active	2026-10-17	billing	tooling	s1	specs/2026-10-17-alpha.md	Alpha

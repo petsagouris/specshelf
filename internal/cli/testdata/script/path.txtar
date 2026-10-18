@@ -1,14 +1,14 @@
 # path prints the resolved vault root to stdout.
 exec specshelf --home $WORK/vault path
-cmpenv stdout path.stdout
+cmppath stdout path.stdout
 
 # The selector flags are global, so they may follow the command.
 exec specshelf path --home $WORK/vault
-cmpenv stdout path.stdout
+cmppath stdout path.stdout
 
 # A relative --home is resolved to an absolute root, as the reference does.
 exec specshelf --home rel-vault path
-cmpenv stdout relpath.stdout
+cmppath stdout relpath.stdout
 
 -- path.stdout --
 $WORK/vault

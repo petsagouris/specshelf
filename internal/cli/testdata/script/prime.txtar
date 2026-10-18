@@ -1,10 +1,10 @@
 # prime prints the vault heading and one block per matching document.
 exec specshelf --home $WORK/vault prime --repo billing
-cmpenv stdout prime.stdout
+cmppath stdout prime.stdout
 
 # With no match it says so under the same heading.
 exec specshelf --home $WORK/vault prime --repo nothing
-cmpenv stdout empty.stdout
+cmppath stdout empty.stdout
 
 -- prime.stdout --
 # Agent Spec Vault

@@ -1,7 +1,7 @@
 # status sets the frontmatter status and bumps updated to today, leaving created
 # and the body alone; the index follows.
 exec specshelf --home $WORK/vault status spec-20261017-note accepted
-cmpenv stdout status.stdout
+cmppath stdout status.stdout
 grep 'status: accepted' vault/specs/2026-10-17-note.md
 grep 'created: 2000-01-01' vault/specs/2026-10-17-note.md
 ! grep 'updated: 2000-01-01' vault/specs/2026-10-17-note.md

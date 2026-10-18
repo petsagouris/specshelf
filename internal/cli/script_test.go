@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"testing"
@@ -61,6 +62,7 @@ func TestScript(t *testing.T) {
 		},
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"exitcode": cmdExitCode,
+			"cmppath":  cmdCmpPath,
 		},
 	})
 }
@@ -88,5 +90,42 @@ func cmdExitCode(ts *testscript.TestScript, _ bool, args []string) {
 	}
 	if got != want {
 		ts.Fatalf("exit code = %d, want %d", got, want)
+	}
+}
+
+// cmdCmpPath compares two files exactly as cmpenv does — environment expansion
+// applied to the recorded file — but normalises filesystem separators on both
+// sides first, so a recorded path written with "/" matches the native separator
+// the tool prints on Windows. Runs of backslashes collapse to one "/" as well,
+// because encoding/json escapes a path's separators ("C:\\dir"), so path --json
+// needs the same treatment as a bare path.
+func cmdCmpPath(ts *testscript.TestScript, neg bool, args []string) {
+	if len(args) != 2 {
+		ts.Fatalf("usage: cmppath file1 file2")
+	}
+	got := sepToSlash(ts.ReadFile(args[0]))
+	want := sepToSlash(os.Expand(ts.ReadFile(args[1]), ts.Getenv))
+	if (got == want) == neg {
+		ts.Fatalf("%s and %s differ\n--- got ---\n%s\n--- want ---\n%s", args[0], args[1], got, want)
+	}
+}
+
+var backslashRun = regexp.MustCompile(`\\+`)
+
+func sepToSlash(s string) string { return backslashRun.ReplaceAllString(s, "/") }
+
+// TestSepToSlash pins the normalisation cmppath relies on, which this Linux CI
+// cannot exercise through the scripts: a native path and its JSON-escaped form
+// both collapse to slashes.
+func TestSepToSlash(t *testing.T) {
+	for _, tt := range []struct{ in, want string }{
+		{"/tmp/work/vault", "/tmp/work/vault"},
+		{`C:\work\vault`, "C:/work/vault"},
+		{`{"root":"C:\\work\\vault"}`, `{"root":"C:/work/vault"}`},
+		{`\\server\share`, "/server/share"},
+	} {
+		if got := sepToSlash(tt.in); got != tt.want {
+			t.Errorf("sepToSlash(%q) = %q, want %q", tt.in, got, tt.want)
+		}
 	}
 }

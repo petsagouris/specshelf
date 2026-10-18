@@ -1,6 +1,6 @@
 # decision creates a decision with the given status and tags, and prints its path.
 exec specshelf --home $WORK/vault decision 'Adopt Markdown' --tags tooling --status accepted
-stdout 'vault/decisions/\d{4}-\d{2}-\d{2}-adopt-markdown\.md$'
+stdout 'vault[/\\]decisions[/\\]\d{4}-\d{2}-\d{2}-adopt-markdown\.md$'
 
 exec specshelf --home $WORK/vault list --kind decision --tag tooling
 stdout 'decision-\d{8}-adopt-markdown\tdecision\taccepted\t\d{4}-\d{2}-\d{2}\t-\ttooling\t-\tdecisions/\d{4}-\d{2}-\d{2}-adopt-markdown\.md\tAdopt Markdown'
