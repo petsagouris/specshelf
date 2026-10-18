@@ -19,6 +19,32 @@ func eachCommand(cmd *cobra.Command, visit func(*cobra.Command)) {
 	}
 }
 
+// TestSupersetCommandsAreAvailable pins the "new commands" divergence: the nine
+// commands the reference tool does not have are present, available, and listed
+// by the root help (task 3.13). It also covers the superset options that ride on
+// existing commands, --json, --format, --color and --slug.
+func TestSupersetCommandsAreAvailable(t *testing.T) {
+	root := NewRootCommand()
+	available := map[string]bool{}
+	eachCommand(root, func(cmd *cobra.Command) { available[cmd.Name()] = cmd.IsAvailableCommand() })
+
+	var help strings.Builder
+	root.SetOut(&help)
+	root.SetArgs([]string{"--help"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("--help: %v", err)
+	}
+
+	for _, name := range []string{"edit", "rm", "status", "doctor", "export", "stats", "sync", "upgrade", "ui"} {
+		if !available[name] {
+			t.Errorf("superset command %q is missing or unavailable", name)
+		}
+		if !strings.Contains(help.String(), name) {
+			t.Errorf("root help does not list the superset command %q", name)
+		}
+	}
+}
+
 // TestCompletionMentionsEveryCommand pins the spec scenario for bash, whose
 // generated script lists each command statically; the other three shells are
 // checked to generate a non-empty script.
