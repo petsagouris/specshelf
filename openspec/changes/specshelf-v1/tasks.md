@@ -89,7 +89,8 @@
 - [x] 6.5 Integration check: run the documented quickstart end to end on each operating system against a fresh vault, and run `doctor` afterwards; verify the exit codes and that no conformance divergence appears. Run on Linux against a fresh vault by following the README's sequence with an explicit `--home`, so the real vault is never touched, and `doctor` afterwards; the macOS and Windows runs wait on a runner that has them
 
 - [ ] 6.6 Make the Windows CI run pass: the `gofmt` step on `windows-latest` exits 1 while printing nothing at all, with `test -z "$(gofmt -l .)"` as the command, no file list and no error text in the log — so the cause is unproven and the check has to be made cross-platform *and* diagnostic before it is believed. Add line-ending attributes so a Windows checkout of text files is LF and the byte-sensitive fixtures and goldens are never converted, and make the gofmt step report its exit status and output rather than swallowing them; verify with a run on all three runners
-## Workflow follow-up
+
+- [ ] 6.7 Make the command surface's tests path-separator portable so the Windows runner passes: ten testscript scripts and `TestShowAndPathJSON` compare expected output that contains filesystem paths written with `/`, while the tool prints the platform's separator (`vault/specs/…` against `vault\specs\…`), so the expectations are wrong rather than the tool. Keep the tool's native output and the index's documented `/`, and make each expectation native — built from `filepath` rather than a literal — or separator-agnostic; verify on all three runners## Workflow follow-up
 
 - After M5, review the change with the OpenSpec verify workflow.
 - Archive the change so the eight capability specs are promoted into `openspec/specs/`.
