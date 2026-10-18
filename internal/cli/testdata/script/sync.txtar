@@ -26,6 +26,17 @@ exec specshelf --home $WORK/vault sync --no-push
 stdout '^nothing to commit$'
 ! stderr .
 
+# With no remote configured the default push has nothing to push: sync commits
+# and succeeds rather than failing, and says nothing about pushing.
+exec specshelf --home $WORK/noremote init
+exec specshelf --home $WORK/noremote new 'Local only'
+exec specshelf --home $WORK/noremote sync
+cmp stdout noremote.stdout
+! stderr .
+exec specshelf --home $WORK/noremote sync
+stdout '^nothing to commit$'
+! stderr .
+
 # A configured remote: the default pushes the new commit and reports it.
 exec git init --bare --quiet $WORK/remote
 exec git -C $WORK/vault remote add origin $WORK/remote
@@ -52,6 +63,9 @@ exitcode 2 specshelf --home $WORK/vault sync --push --no-push
 stderr '^specshelf: --push and --no-push are mutually exclusive$'
 
 -- first.stdout --
+initialised git repository
+committed changes
+-- noremote.stdout --
 initialised git repository
 committed changes
 -- push.stdout --

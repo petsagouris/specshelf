@@ -14,11 +14,12 @@ import (
 // stays empty; the command returns an error when there is at least one so the
 // exit code is non-zero, and succeeds silently for a healthy vault.
 //
-// The checks themselves live in vault.Validate, which reports unreadable
-// documents and kind/directory mismatches. The layout check and the
-// id/filename-versus-title check the spec also names are task 3.22's to add
-// there; this command prints whatever the store reports and adds no check of its
-// own, so a second definition of the vault's rules cannot drift from the store's.
+// Every finding the store reports is listed, one line each — the missing
+// layout, the unreadable documents, the kind mismatches and the identity
+// mismatches — so the count in the final error is never the only trace of a
+// problem. The checks themselves live in vault.Validate; this command prints
+// what the store reports and adds no check of its own, so a second definition
+// of the vault's rules cannot drift from the store's.
 func newDoctorCommand() *cobra.Command {
 	var rebuildIndex bool
 
@@ -35,9 +36,15 @@ func newDoctorCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			for _, missing := range report.Missing {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "specshelf: %s\n", missing.Text())
+			}
 			printWarnings(cmd, report.Unreadable)
 			for _, mismatch := range report.Mismatches {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "specshelf: %s\n", mismatch.Text())
+			}
+			for _, identity := range report.Identities {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "specshelf: %s\n", identity.Text())
 			}
 			if rebuildIndex {
 				if err := vault.WriteIndex(resolution.Root); err != nil {
