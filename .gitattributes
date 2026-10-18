@@ -1,0 +1,10 @@
+# Every text file checks out as LF on every platform. Without this, a Windows
+# checkout (core.autocrlf=true) rewrites Go sources to CRLF, and `gofmt -l .`
+# then reports every one of them as unformatted.
+* text=auto eol=lf
+
+# Byte-sensitive paths: fixtures and goldens are compared byte-for-byte, so git
+# must never convert their line endings. -text disables every conversion.
+testdata/** -text
+internal/**/testdata/** -text
+*.jsonl -text
