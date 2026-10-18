@@ -72,12 +72,21 @@ func TestCompatibilityFixtures(t *testing.T) {
 			}
 
 			want := readFixture(t, filepath.Join(fixtureExpected, c.name+".stdout"))
+			gotStdout := got.stdout
 			if c.pathRoot != "" {
+				// The output embeds the run's vault path, which the tool prints
+				// with the platform separator while the fixture records "/", so
+				// normalise both sides. Only these commands can carry a native
+				// separator: the rest use vault-relative paths that are "/" on
+				// every platform, and a blanket ToSlash on them also rewrites the
+				// backslash JSON uses to escape a quote, which made list_json
+				// differ on Windows.
 				want = substituteOnce(t, c.name, want, []byte(c.pathRoot), []byte(dir), 1)
 				want = []byte(filepath.ToSlash(string(want)))
+				gotStdout = []byte(filepath.ToSlash(string(gotStdout)))
 			}
 			want = tolerateEmptyScalarTitle(t, c.name, want)
-			if gotStdout := []byte(filepath.ToSlash(string(got.stdout))); !bytes.Equal(gotStdout, want) {
+			if !bytes.Equal(gotStdout, want) {
 				t.Errorf("stdout differs:\n got %q\nwant %q", gotStdout, want)
 			}
 
