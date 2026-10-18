@@ -40,3 +40,19 @@ exec specshelf --home $WORK/slug new 'Another Title' --slug my-picked-slug
 stdout 'slug/specs/\d{4}-\d{2}-\d{2}-my-picked-slug-2\.md$'
 exec specshelf --home $WORK/slug list
 stdout 'spec-\d{8}-my-picked-slug-2\tspec\tactive'
+
+# A hand-picked slug that would escape the vault's document directory is a usage
+# error, and the vault is not created at all.
+exitcode 2 specshelf --home $WORK/badslug new 'Some Title' --slug 'a/b'
+stderr '^specshelf: invalid slug'
+! exists $WORK/badslug
+
+exitcode 2 specshelf --home $WORK/dotslug new 'Some Title' --slug '..'
+stderr '^specshelf: invalid slug'
+! exists $WORK/dotslug
+
+# An explicitly empty --slug is rejected rather than read as "derive from the
+# title"; an absent flag is what means derive.
+exitcode 2 specshelf --home $WORK/emptyslug new 'Some Title' --slug ''
+stderr '^specshelf: invalid slug'
+! exists $WORK/emptyslug

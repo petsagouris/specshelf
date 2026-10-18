@@ -40,6 +40,15 @@ type NewDocument struct {
 // candidate name is never overwritten, so two concurrent creations of one title
 // both succeed under distinct names, each with its own -N suffixed id.
 func Create(root string, in NewDocument) (string, error) {
+	// A hand-picked slug shapes the file name, so it is refused before the
+	// vault is touched rather than allowed to write outside it (task 4.12). An
+	// empty Slug means "derive from the title", so it is checked by the command
+	// surface only when --slug was given explicitly.
+	if in.Slug != "" {
+		if err := ValidateSlug(in.Slug); err != nil {
+			return "", err
+		}
+	}
 	if err := initVault(root); err != nil {
 		return "", err
 	}

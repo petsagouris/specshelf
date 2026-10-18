@@ -113,6 +113,34 @@ func TestCreateUsesPickedSlugVerbatim(t *testing.T) {
 	}
 }
 
+// A hand-picked slug that would shape the document path outside the vault is
+// refused before anything is written, so every rejection leaves the vault
+// untouched (task 4.12). An empty Slug is the "derive from the title" sentinel
+// and is not one of these cases; the command surface rejects an explicitly
+// empty --slug instead.
+func TestCreateRejectsInvalidPickedSlug(t *testing.T) {
+	for _, slug := range []string{"a/b", `a\b`, ".", "..", "../escape", "a/../b", "/", "specs/nested"} {
+		t.Run(slug, func(t *testing.T) {
+			root := t.TempDir()
+			_, err := Create(root, NewDocument{Kind: "spec", Title: "Some Title", Slug: slug, Status: "active"})
+			var invalid *InvalidSlugError
+			if !errors.As(err, &invalid) {
+				t.Fatalf("Create(Slug %q) error = %v, want *InvalidSlugError", slug, err)
+			}
+			if invalid.Slug != slug {
+				t.Errorf("InvalidSlugError.Slug = %q, want %q", invalid.Slug, slug)
+			}
+			entries, err := os.ReadDir(root)
+			if err != nil {
+				t.Fatalf("ReadDir: %v", err)
+			}
+			if len(entries) != 0 {
+				t.Errorf("the rejection touched the vault: %v", entries)
+			}
+		})
+	}
+}
+
 // LinkSessions appends to the existing sessions, stamps updated and refreshes the
 // index, keeping the document's other fields.
 func TestLinkSessionsMergesAndRefreshes(t *testing.T) {

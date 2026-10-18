@@ -48,6 +48,14 @@ func newCreateCommand(use, kind, short string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// An explicitly empty --slug would otherwise read as "derive from
+			// the title", so it is validated here, where the flag's presence is
+			// known. A non-empty slug is validated again by vault.Create.
+			if cmd.Flags().Changed("slug") {
+				if err := vault.ValidateSlug(slug); err != nil {
+					return err
+				}
+			}
 			ids, err := sessionValues(sessions, current)
 			if err != nil {
 				return err
