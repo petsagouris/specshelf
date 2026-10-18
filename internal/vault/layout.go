@@ -10,27 +10,35 @@ import (
 	"github.com/petsagouris/specshelf/internal/docs"
 )
 
+// vaultDirs are the directories a vault root holds.
+var vaultDirs = []string{"specs", "decisions", "templates"}
+
+// vaultFiles are the files a vault root holds, relative to it with slash
+// separators, with the built-in content the initialiser writes. initVault
+// creates exactly vaultDirs and vaultFiles and Validate requires exactly the
+// same two lists, so the initialiser and the diagnostic cannot drift.
+var vaultFiles = []struct {
+	rel  string
+	data string
+}{
+	{"templates/spec.md", docs.SpecTemplate},
+	{"templates/decision.md", docs.DecisionTemplate},
+	{"README.md", docs.VaultReadme},
+}
+
 // initVault creates the vault directories and the built-in README and
 // templates. Each file is written only when it is missing, so user edits to a
 // template or the README survive.
 func initVault(root string) error {
-	for _, dir := range []string{"specs", "decisions", "templates"} {
+	for _, dir := range vaultDirs {
 		path := filepath.Join(root, dir)
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", path, err)
 		}
 	}
 
-	files := []struct {
-		path string
-		data string
-	}{
-		{filepath.Join(root, "templates", "spec.md"), docs.SpecTemplate},
-		{filepath.Join(root, "templates", "decision.md"), docs.DecisionTemplate},
-		{filepath.Join(root, "README.md"), docs.VaultReadme},
-	}
-	for _, f := range files {
-		if err := writeIfMissing(f.path, f.data); err != nil {
+	for _, f := range vaultFiles {
+		if err := writeIfMissing(filepath.Join(root, filepath.FromSlash(f.rel)), f.data); err != nil {
 			return err
 		}
 	}
