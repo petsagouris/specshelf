@@ -1,6 +1,97 @@
-# Tasks
+# How v0.1.0 was specified and built
 
-## 1. M0 — Module and guardrails
+The record of the work that produced `v0.1.0`, kept together as one file: the
+proposal that said why the port exists and what was in and out of scope, and the
+task list that says how each piece was verified. It is history, not a contract —
+the behaviour the code must satisfy lives in [`specs/`](specs/).
+
+The design decisions (D1–D13) and their rejected alternatives were retired with
+this file; the reasons that still matter are stated where the boundary lives, in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## The proposal
+
+### Why
+
+Coding agents need durable, cross-repository context — specs, contracts, design
+decisions — that survives chat resets. `agent-spec-vault` keeps exactly that in
+plain Markdown, but it is a 600-line Python package: it needs a Python
+toolchain, ships no binaries, silently drops documents whose frontmatter it
+cannot parse, writes frontmatter that is not valid YAML, and has no write
+atomicity, so two agents writing at once can lose data. `specshelf` is a Go port
+and superset: one static binary, installable with `go install` on Linux, macOS
+and Windows, reading and writing the same vault.
+
+### What Changes
+
+- New Go implementation, `github.com/petsagouris/specshelf`, binary `specshelf`,
+  module requiring Go 1.26 or newer.
+- **Format compatibility is preserved**: same vault directory, same document
+  bytes, same document ids. A vault written by either tool is fully usable by
+  the other. Verified against the ported slug algorithm on a 12-title corpus,
+  including CJK, Cyrillic and emoji titles.
+- Corrections where upstream is wrong: frontmatter is always written as valid
+  YAML; every write is atomic (temp file plus rename) and creation is exclusive;
+  unreadable documents produce a warning on stderr instead of disappearing from
+  listing; `index.jsonl` is refreshed after every mutating command.
+- Superset command surface: `edit`, `rm`, `status`, `doctor`, `export`, `stats`,
+  `sync`, `upgrade`, `ui`, plus `--json` on every read command,
+  `--format tsv|table|csv|jsonl`, `--color`, shell completions and man pages.
+- New capabilities not present upstream: a TOML config file with named vaults,
+  project-local `.specshelf/` vault discovery, git-backed syncing through the
+  user's own `git`, a `go install`-aware upgrade check, and a full-screen
+  browser.
+- **BREAKING** (against the Python CLI, for existing scripts and agent
+  instructions): there is no `specv` binary alias, and `SPECV_HOME` is not read;
+  the equivalent is `SPECSHELF_HOME`.
+- Out of scope: an MCP server, any daemon, watcher or network listener, release
+  artifacts and code signing, merged search across multiple vaults at once, and
+  Windows-specific vault relocation.
+
+### Capabilities
+
+#### New Capabilities
+
+- `vault-format`: the on-disk contract — vault layout, document frontmatter and
+  body, document identity and slugs, file naming, and the JSONL index.
+- `vault-store`: choosing which vault is in use and applying every document
+  operation safely — resolution and project discovery, create/read/update/remove,
+  atomic writes, handling of unreadable documents, index refresh.
+- `cli`: the command surface and its machine-readable contract — commands,
+  flags, output formats, colour, exit codes, filtering and sorting.
+- `config`: user preferences and named vaults from a TOML file, including
+  precedence against flags and environment variables.
+- `git-sync`: committing and optionally pushing a vault with the user's own git
+  installation.
+- `upgrade`: reporting and applying updates under a `go install`-only
+  distribution.
+- `tui`: interactive browsing, searching, viewing and editing that reuses the
+  CLI's storage guarantees.
+- `conformance`: the compatibility contract with the Python implementation —
+  fixtures, bidirectional interchange and the enumerated list of intentional
+  divergences.
+
+#### Modified Capabilities
+
+None — this is the first change in the project; no specs exist yet.
+
+### Impact
+
+- New Go module with no existing code to migrate; the reference implementation
+  stays untouched and remains the source of truth for format behaviour.
+- Runtime dependencies: `spf13/cobra`, `golang.org/x/text`,
+  `pelletier/go-toml/v2`, `charm.land/bubbletea/v2` (+ `charm.land/bubbles/v2`).
+- Reads and writes user-owned vaults under `~/.agents/spec-vault`, including
+  vaults that already contain documents created by the Python tool. Data loss is
+  the top risk of this change; that is why atomic writes and the conformance
+  suite are in scope rather than deferred.
+- Derived work: MIT `agent-spec-vault` by xixifast, copyright notice retained.
+- Distribution: `go install github.com/petsagouris/specshelf/cmd/specshelf@version`
+  only, so the project carries no release tooling and no signing infrastructure.
+
+## The tasks
+
+### 1. M0 — Module and guardrails
 
 - [x] 1.1 Initialise the module `github.com/petsagouris/specshelf` with Go 1.26, add `spf13/cobra`, and create `cmd/specshelf/main.go` whose root command prints help and reports a development version; verify with `go build ./...` and `go run ./cmd/specshelf --version`
 - [x] 1.2 Add the package skeleton (`internal/frontmatter`, `internal/vault`, `internal/config`, `internal/gitx`, `internal/cli`, `internal/tui`, `internal/docs`) with one-line package docs; verify `go vet ./...` is clean
@@ -8,7 +99,7 @@
 - [x] 1.4 Add the CI workflow: build, `vet`, `gofmt -l`, and `go test ./...` on ubuntu, macos and windows, plus golangci-lint on ubuntu; verify it is accepted by GitHub, that the referenced actions exist, and that the same command sequence passes locally (the workflow is disabled on GitHub while the repository is private)
 - [x] 1.5 Add the install smoke test that builds into a temporary `GOBIN` with `go install` and asserts `--version` prints the development marker; verify the test passes locally and in CI
 
-## 2. M1 — Vault format
+### 2. M1 — Vault format
 
 - [x] 2.1 Implement document splitting in the reader: a pure `splitFrontmatter(name, data)` that separates the frontmatter block from the body, normalises CRLF and lone CR to LF, strips a leading byte-order mark, treats a document with no frontmatter as body-only with empty metadata, accepts an empty block, and reports an unterminated block as an error naming the file (the exported `Parse` entry point arrives with the typed view in 2.3); verify with a table test covering each case
 - [x] 2.2 Implement the line dialect: unquoted scalars, block sequences, blank lines ignored, lines without a key separator ignored, list items with no preceding key ignored, values keeping colons and hashes, and quoted values unquoted; verify with a table test covering each case
@@ -26,7 +117,7 @@
 - [x] 2.14 Fix the two codec defects the fuzz target found: `Marshal` must write the value the accessors read for the fields whose accessors fall back (`id`, `kind`, `title`) so a rewrite cannot blank a document's identity, and it must not emit a key line its own reader reads as a list item (a key beginning `- ` is written quoted, and keys are unquoted on read); verify the committed fuzz counterexamples pass, `go test -count=1 -run Fuzz ./internal/frontmatter/` stays green, and a 30s `-fuzz` run finds no failure
 - [x] 2.15 Close the M1 audit's findings: `docs/FORMAT.md` claims control characters are escaped `\u00xx` when five of them use the JSON short escapes, and states a title-equals-heading invariant that only documents this tool creates satisfy; `Index`'s `summary` splits the body on `\n` where the reference splits on Python's whole line-break set, so a body holding U+2028 summarises differently; and four clauses no test holds — `init` must never write `index.jsonl`, a rewritten CRLF document must use LF, `Index` must error on a document it cannot read, and `Index` must ignore a non-Markdown entry; verify the fixture parity tests stay byte-equal and that each new case fails when its behaviour is removed
 
-## 3. M2 — Store and CLI parity (v0.1.0)
+### 3. M2 — Store and CLI parity (v0.1.0)
 
 - [x] 3.1 Implement vault resolution (`--home`, `SPECSHELF_HOME`, `--vault`, `--project`, config default, built-in default) with source reporting and rejection of conflicting selectors; verify tests cover each precedence step and both conflict cases. The flags that drive the resolution and the usage exit code belong to the command surface in 3.7, which consumes the typed errors this task returns
 - [x] 3.2 Implement project discovery: walk up for `.specshelf`, stop at `$HOME` or the filesystem root, error when absent; verify tests cover a nested working directory, a missing vault and a marker above the home directory
@@ -52,7 +143,7 @@
 - [x] 3.22 Extend the store validation to the two checks the CLI spec's `doctor` requires and the store does not yet make: the vault layout (the directories and the README the initialiser creates), and documents whose id or file name does not match their title. Derive both from the existing naming functions rather than a second definition, state explicitly how a file name with no date prefix is treated and how the date is chosen, and make `Validate`'s problem count cover them
 - [x] 3.23 Add the `doctor` and `stats` commands over the store's validation and statistics API, and wire the typed errors into the exit-code classifier (a conflicting selector and `ProjectDisabledError` to the usage code, `OutsideVaultError` to the runtime one). These are the halves the amendments to 3.1, 3.4, 3.6, 3.10, 3.19 and 3.20 deferred to the command surface; verify with testscript scripts for both commands, a healthy vault exiting 0, a vault with one problem exiting non-zero, and each error mapping
 
-## 4. M3 — Superset commands
+### 4. M3 — Superset commands
 
 - [x] 4.1 Implement `edit` (editor resolution, `updated` only on change), `rm` with `--dry-run`, and `status <ref> <status>`; verify tests cover an unchanged edit, a dry-run removal and a status change with the date bump
 - [x] 4.2 Implement `export` (JSON and JSONL) with tests asserting every document appears once with index-equivalent fields
@@ -67,7 +158,7 @@
 - [x] 4.11 Three fixes the command surface left open: `sync` must succeed in a vault with no remote, because the git-sync spec requires the first sync in a plain directory and a repeated sync to exit 0 and failing only when a remote *rejects* a push — treat an unconfigured remote as nothing to push rather than an error; `doctor` must list each finding it reports rather than printing only a count — the spec requires it to report every document that fails to parse, every kind mismatch and every identity mismatch — and its script must assert the layout and identity findings 3.22 added, which it predates; and `ui` must check for a terminal before resolving an editor, so a redirected run reports the non-terminal error instead of a missing editor
 - [x] 4.12 Validate a hand-picked `--slug`: it is used verbatim today, so a slug containing a path separator or `..` shapes the document path and can write outside the vault — the same footgun the four confined mutation paths had. Reject a slug that is empty, contains a path separator, or is `.` or `..`, with a typed error the command surface maps to a usage code, and verify each rejection leaves the vault untouched
 
-## 5. M4 — Interactive session
+### 5. M4 — Interactive session
 
 - [x] 5.1 Add `charm.land/bubbletea/v2` and build the model with list, detail, create and help views plus key handling; verify snapshot tests of the rendered view at three terminal sizes
 - [x] 5.2 Implement in-memory filtering and the kind/status/repo/tag filters; verify tests assert filtering narrows results without filesystem access (via a counting fake store)
@@ -80,7 +171,7 @@
 - [x] 5.9 Wire the session into the command surface: the spec lists `ui` among the nine superset commands and nothing provides it. Add the command, including the non-terminal error and its exit code, calling `tui.Run` with the vault store and the editor `internal/cli` already implements, and add a testscript script for it
 - [x] 5.10 Advertise the session's mutation keys: the editor handoff, status change and delete keys work, but they are absent from `Bindings`, so the help view — which the spec requires to show the available keys — and the README table both omit them. Add the three bindings in `internal/tui/keys.go` and the matching three README rows together, so the parity test that ties the two keeps them in step
 
-## 6. M5 — Hardening and first tag
+### 6. M5 — Hardening and first tag
 
 - [x] 6.1 Run the full suite locally, including cross-compilation and `vet` for macOS and Windows, together with the conformance suite with Python available; verify the local run is green and, once the repository is public, that the workflow passes on all three runners with one covering test per divergence entry. The local half is green — the whole suite, `vet` plus cross-compilation for windows/amd64, windows/arm64, darwin/amd64, darwin/arm64 and linux, and the conformance suite with the Python tool present, one covering test per divergence entry; the three-runner half is unblocked now that the repository is public and CI runs on all three runners, so this task closes when the Windows job is green
 - [x] 6.2 Write `docs/ARCHITECTURE.md` describing the package boundaries and the single-writer rule, and add a test asserting the documented package list matches the directories on disk
@@ -90,7 +181,9 @@
 
 - [x] 6.6 Make the Windows CI run pass: the `gofmt` step on `windows-latest` exits 1 while printing nothing at all, with `test -z "$(gofmt -l .)"` as the command, no file list and no error text in the log — so the cause is unproven and the check has to be made cross-platform *and* diagnostic before it is believed. Add line-ending attributes so a Windows checkout of text files is LF and the byte-sensitive fixtures and goldens are never converted, and make the gofmt step report its exit status and output rather than swallowing them; verify with a run on all three runners. Green on all four jobs in run 39091230386 (`main`), including `test (windows-latest)` for the first time
 
-- [x] 6.7 Make the command surface's tests path-separator portable so the Windows runner passes: ten testscript scripts and `TestShowAndPathJSON` compare expected output that contains filesystem paths written with `/`, while the tool prints the platform's separator (`vault/specs/…` against `vault\specs\…`), so the expectations are wrong rather than the tool. Keep the tool's native output and the index's documented `/`, and make each expectation native — built from `filepath` rather than a literal — or separator-agnostic; verify on all three runners## Workflow follow-up
+- [x] 6.7 Make the command surface's tests path-separator portable so the Windows runner passes: ten testscript scripts and `TestShowAndPathJSON` compare expected output that contains filesystem paths written with `/`, while the tool prints the platform's separator (`vault/specs/…` against `vault\specs\…`), so the expectations are wrong rather than the tool. Keep the tool's native output and the index's documented `/`, and make each expectation native — built from `filepath` rather than a literal — or separator-agnostic; verify on all three runners
+
+#### Workflow follow-up
 
 - [x] 6.8 Finish the path-separator audit the Windows run exposed: 6.7 fixed `internal/cli` only, because that is where the truncated log pointed, and the next run failed instead in `internal/vault` (`TestResolvePrecedence` and `TestResolveProjectSetting`, five subtests) and `internal/conformance` (`TestCompatibilityFixtures/list_json`). Audit every remaining test expectation that compares a filesystem path — not just the two that failed, since the log is truncated again — and make each native via `filepath` the way 6.7 did for the command surface; verify on all three runners
 - After M5, review the change with the OpenSpec verify workflow.

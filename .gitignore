@@ -12,6 +12,5 @@
 .idea/
 .vscode/
 
-# Beads execution mirror (derived from the OpenSpec task list; regenerate with
-# scripts/bd-sync.py, never commit its database)
+# Local task board (retired; never committed)
 /.beads/

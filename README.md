@@ -8,7 +8,7 @@ AI coding agents.
 Same vault, same documents, same ids — installable with `go install` on Linux,
 macOS and Windows, with no Python toolchain required.
 
-**Status: under construction.** The behaviour contract lives in `openspec/`;
+**Status: under construction.** The behaviour contract lives in `docs/specs/`;
 `AGENTS.md` explains how the work is organised and where each requirement is
 written down.
 

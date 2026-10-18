@@ -4,13 +4,13 @@
 and exits. There is no daemon, no watcher and no network listener, so the
 packages below are the whole of the runtime structure.
 
-The split is decision D1 in
-`openspec/changes/archive/2026-10-18-specshelf-v1/design.md`: one
-package per reason to change, rather than one flat package or a package per
-command. This file records the boundaries that exist; the format of what is on
-disk belongs to [`FORMAT.md`](FORMAT.md), the configuration file to
-[`CONFIG.md`](CONFIG.md), and every intentional difference from the Python
-reference tool to [`DIVERGENCES.md`](DIVERGENCES.md).
+The split is one package per reason to change, rather than one flat package or a
+package per command: a boundary that exists for a stated reason is a boundary a
+test can hold, and it keeps each surface's imports pointing one way. This file
+records the boundaries that exist; the format of what is on disk belongs to
+[`FORMAT.md`](FORMAT.md), the configuration file to [`CONFIG.md`](CONFIG.md), and
+every intentional difference from the Python reference tool to
+[`DIVERGENCES.md`](DIVERGENCES.md).
 
 ## The shape
 
@@ -34,18 +34,18 @@ imports `internal/cli` and nothing else.
 ## The single-writer rule
 
 **`internal/vault` is the only package that touches vault files**, on read or on
-write. Every surface — the CLI now, the TUI in this change, MCP later — calls the
+write. Every surface — the CLI, the TUI, MCP later — calls the
 store. A second write path is a defect, not a shortcut.
 
 It exists for two reasons. First, the storage guarantees are the point of this
-port: D6 makes every write a temp-file-plus-rename and every creation exclusive,
-so concurrent agents cannot lose data. A second writer would need its own copy of
+port: every write is a temp-file-plus-rename and every creation exclusive, so
+concurrent agents cannot lose data. A second writer would need its own copy of
 that logic, and the guarantee would hold for one surface and not the other.
 Second, everything derived from a title — the slug, the document id, the file
 name, the seeded body — is derived in one place inside `internal/vault`; a second
 writer would reintroduce the collision and normalisation bugs the format work
-fixed. D11 states the same aim from the TUI's side: behaviour cannot drift
-between surfaces.
+fixed. The same aim applies from the TUI's side: behaviour cannot drift between
+surfaces.
 
 What the rule forbids:
 
@@ -78,18 +78,22 @@ test in `cmd/specshelf` compares against the directories on disk.
 | `internal/vault` | The store, and the only package that touches vault files: resolution, project discovery, document create/read/edit/remove, atomic IO and exclusive creation, template seeding, index build, encode and refresh, slug and id derivation, reference resolution, list, search, query, validation and statistics. |
 | `internal/frontmatter` | One document's bytes: the tolerant reader for the upstream line dialect and the writer with its fixed field order and quoting rules. It knows nothing about the vault. |
 | `internal/config` | The TOML configuration file: where it is found, how it is parsed, and the per-setting precedence flag → environment → file → default. |
-| `internal/gitx` | Committing and pushing a vault by running the user's own git binary. It is a leaf with no vault knowledge; the `sync` command that calls it is task 4.10. |
+| `internal/gitx` | Committing and pushing a vault by running the user's own git binary. It is a leaf with no vault knowledge; the `sync` command in `internal/cli` calls it. |
 | `internal/tui` | The interactive full-screen browser: model, views, key bindings, in-memory filtering and the editor handoff. It reaches the vault only through its own `Store` interface, one method per operation. |
 | `internal/docs` | The embedded vault templates and README bytes a new vault is seeded with. |
 | `internal/conformance` | The test-only compatibility package: the default suite builds the real binary and compares it against the committed Python fixtures; the `//go:build conformance` differential suite runs both tools against equivalent vaults. |
 
 ## Where the rest is written down
 
+- The behaviour each capability must deliver: [`specs/`](specs/).
 - Vault layout, frontmatter fields, document id, file name and index record:
   [`FORMAT.md`](FORMAT.md).
 - Every intentional divergence from the reference tool, each with its own test:
   [`DIVERGENCES.md`](DIVERGENCES.md).
 - Configuration keys, file location and precedence: [`CONFIG.md`](CONFIG.md).
-- Why these boundaries, each with its rejected alternatives: D1 for the package
-  split, D6 for atomic writes and the absence of locking, D11 for the TUI sharing
-  the store, D12 for MCP arriving later behind the same seam.
+- How v0.1.0 was specified and verified: [`HISTORY-0.1.0.md`](HISTORY-0.1.0.md).
+
+The boundaries above are deliberate, and each has a reason that outlived the
+change that introduced it: one package per reason to change, atomic writes with
+no lock to leave behind, the TUI sharing the store instead of reaching the
+filesystem, and a later MCP server arriving behind that same seam.

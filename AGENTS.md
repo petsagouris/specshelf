@@ -8,18 +8,18 @@ before writing code, and give it to every delegated agent.
 `specshelf` is a Go port and superset of
 [agent-spec-vault](https://github.com/xixifast/agent-spec-vault) (Python, MIT,
 v0.1.2). It keeps durable specs, cross-repo contracts and ADR-style decisions as
-Markdown under a user-level vault (`~/.agents/spec-vault` by default). What we
-are building is specified in OpenSpec, not in this file.
+Markdown under a user-level vault (`~/.agents/spec-vault` by default). What it
+must do is specified in `docs/specs/`, not in this file.
 
 ## Read these before writing code
 
 | What | Where |
 | --- | --- |
-| The behaviour contract to satisfy | `openspec/specs/<capability>/spec.md` |
-| Why, what changes, breaking changes, out of scope | `openspec/changes/archive/2026-10-18-specshelf-v1/proposal.md` |
-| Design decisions D1–D13, each with its rejected alternatives | `openspec/changes/archive/2026-10-18-specshelf-v1/design.md` |
-| The work, with each task's own verification | `openspec/changes/archive/2026-10-18-specshelf-v1/tasks.md` |
-| Non-negotiable project constraints | `openspec/config.yaml` |
+| The behaviour contract to satisfy | `docs/specs/<capability>.md` |
+| The package map, and the one rule | `docs/ARCHITECTURE.md` |
+| The vault format on disk | `docs/FORMAT.md` |
+| Configuration keys and precedence | `docs/CONFIG.md` |
+| How v0.1.0 was built, and how each piece was verified | `docs/HISTORY-0.1.0.md` |
 
 Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
 `upgrade`, `tui`, `conformance`.
@@ -33,11 +33,15 @@ Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
 - Runtime dependencies are exactly `spf13/cobra`, `golang.org/x/text`,
   `pelletier/go-toml/v2`, `charm.land/bubbletea/v2` (+ `charm.land/bubbles/v2`).
   Anything else needs an explicit decision first. Cobra's own document
-  generation, which `man` uses, is covered by D4: it compiles in
-  `cpuguy83/go-md2man/v2` and `russross/blackfriday/v2` as indirect modules
-  rather than us hand-rolling roff.
+  generation, which `man` uses, compiles in `cpuguy83/go-md2man/v2` and
+  `russross/blackfriday/v2` as indirect modules rather than us hand-rolling
+  roff.
 - Charm imports are `charm.land/...`. The `github.com/charmbracelet/...` v2 paths
   do not compile.
+- Nothing may depend on release assets, checksums or signatures: distribution is
+  `go install` only, so the module is the whole of what ships.
+- MIT, retaining the upstream copyright notice: this is a derived work — see
+  `LICENSE` and `NOTICE`.
 - Vault format, document bytes and document ids stay compatible with the Python
   tool. Every intentional divergence is listed in `docs/DIVERGENCES.md` and has a
   test that asserts it exactly.
@@ -62,81 +66,15 @@ go build ./... && go vet ./... && gofmt -l . && go test ./...
 
 Cross-platform expectations are part of that verification. A test that compares a filesystem path must build it with `filepath`, never with a literal containing `/`, because the tool prints the platform's separator; the index record's `path` field is the single exception and stays `/` everywhere. Normalising separators must be lossless — `filepath.ToSlash` rewrites every backslash, including JSON's `\"` escape — so apply it to both sides of a comparison, or only where a path is really embedded.
 
-Each task in `tasks.md` states its own verification. Run it and paste the raw
-output; a summary of the output is not evidence. Fuzz runs
-(`go test -fuzz FuzzX -fuzztime 30s`) count as raw output too.
+Work you take on states its own verification before it starts, and the report
+carries the raw output; a summary of the output is not evidence. Fuzz runs
+(`go test -fuzz FuzzX -fuzztime 30s`) count as raw output too. Where a change is
+specified as a numbered task, its verification is recorded in
+`docs/HISTORY-0.1.0.md`.
 
 Never point a command at the real vault. Tests use temporary directories.
 `testdata/` holds generated fixtures from the Python reference implementation and
 must not be hand-edited.
-
-## Execution mirror (beads)
-
-A change's `tasks.md` is **authoritative** for scope and completion, and a beads
-board mirrors it so execution state — claims, blockers, work found mid-task —
-survives a context reset. The board is project-local (`.beads/`), derived, and
-never committed. The first change,
-`openspec/changes/archive/2026-10-18-specshelf-v1/tasks.md`, is archived with
-every task complete and its board closed. `scripts/bd-sync.py` has that change's
-path compiled in, so repoint it at the next change's `tasks.md` before its first
-sync.
-
-```
-scripts/bd-sync.py                 # after editing tasks.md; idempotent, --dry-run supported
-scripts/bd-claim.py <task-id>      # take a task, and record the worktree it runs in
-bd ready                           # unblocked work
-bd unclaim <bead-id>               # release a claim whose agent died
-bd --help                          # command reference (safe, unlike `bd prime`)
-```
-
-**Starting a task — claim first, in one step, always.** This is the step that
-gets skipped when it is only prose, so it is one command run *before* the first
-edit and *before* any subagent is launched:
-
-```
-scripts/bd-claim.py 2.7 --worktree /tmp/opencode/worktrees/2.7
-scripts/bd-claim.py 2.12                      # worked in this checkout
-```
-
-It resolves the bead by its external reference (a typo cannot hit "the last
-touched issue"), refuses to claim a closed bead, lets `bd --claim` refuse to steal
-another actor's live claim, and appends the worktree and branch to the bead's
-*notes* — never its description, which `bd-sync.py` rewrites from `tasks.md`.
-
-For delegated work the **main agent claims, before the subagent starts**: a
-worktree does not carry `.beads/` (it is ignored), so a subagent can neither see
-nor claim its bead, and must not run `bd` at all. That also means the claim is
-the only place the worktree is recorded, which is why it names it.
-
-Keep beads' own *rule text* out of an agent's context. `bd setup opencode` appends
-a section to this file and `bd prime` injects one at runtime; both say "use beads
-for ALL task tracking" and "you MUST `bd close` before saying done", which
-contradict the precedence above, and neither can be configured to stop — only
-`no-git-ops` and `agent.profile` change the git wording. So: do not run
-`bd setup`, do not install the editor integrations, prefer `bd --help` over
-`bd prime`. (`bd hooks install` is unrelated — it installs git hooks, not context
-injection.) Beads is built for repositories where it *is* the tracker; this one is
-the inverse, so its session-close protocol points the wrong way here.
-
-- A bead exists only because a task exists. Work discovered mid-task is recorded
-  in beads *and* added to `tasks.md`; the reverse never happens.
-- Completion is ticked in `tasks.md` first and then mirrored. Never close a bead
-  to mean "done" — that is exactly the drift this rule prevents.
-- Titles are labels truncated to fit; the bead description holds the task text
-  verbatim.
-- The script does not derive task-to-task dependencies, because tasks.md does not
-  record them. Add a real blocker with `bd dep add` when you find one.
-
-Per-project settings this relies on, stored in `.beads/config.yaml` and therefore
-**lost on a fresh clone** — reapply them after `bd init`:
-
-```
-bd config set events-journal true   # the board refreshes in seconds without re-reading everything
-bd config set export.auto true      # keeps .beads/issues.jsonl fresh after writes
-bd export -o .beads/issues.jsonl    # seed it once: `bd list --json` omits dependency
-                                    # links, so the board builds its epic→task tree
-                                    # from this file, and nothing creates it by default
-```
 
 ## Parallel work
 
@@ -155,8 +93,9 @@ Rules:
   depends on.
 - The agent commits on its branch and reports the hash; the main agent reviews
   the diff before merging anything. Nothing is merged unreviewed.
-- Never edit `tasks.md` or anything under `openspec/` in a worktree. Those are
-  single-writer files in the main checkout, and a tick made on a branch is lost.
+- Never edit `docs/ARCHITECTURE.md` or `docs/specs/` in a worktree. Those are
+  single-writer files in the main checkout, and an edit made on a branch silently
+  diverges from the tree it merges into.
 - A worktree is for tasks whose files are disjoint from work in flight. Two
   agents editing one package is not parallelism, it is a merge conflict with
   extra steps; combine those tasks into one worktree and one agent instead.
@@ -167,12 +106,13 @@ Rules:
 
 Every delegation must contain all six of these, or it is not ready to send:
 
-1. **Read first** — this file, the capability spec(s) covering the work, and the
-   design decisions it depends on, named explicitly (e.g. "D2 and D6").
-2. **Task** — the task id and its exact text from `tasks.md`.
+1. **Read first** — this file and the capability spec(s) in `docs/specs/` that
+   cover the work, named explicitly.
+2. **Task** — the exact work, quoted: what changes, where, and the observable
+   result that means it is done.
 3. **Scope** — the exact files or directories it may create or modify; everything
-   else is read-only. It may not edit `tasks.md` (the main agent is its single
-   writer) and may not edit anything under `openspec/`.
+   else is read-only. It may not edit `docs/ARCHITECTURE.md` or `docs/specs/`;
+   the main agent is their single writer.
 4. **Verification** — the command to run, and the requirement to paste raw output.
 5. **Environment** — Go 1.27.2 is on the PATH; scratch space is `/tmp/opencode`;
    no `sudo`, no system-wide installs, no network access beyond the Go module
@@ -185,7 +125,7 @@ five specs to write one test has cost more than it saved.
 
 ### Precision checklist
 
-A brief that names the task id but leaves the work to interpretation is not
+A brief that names a file but leaves the work to interpretation is not
 precise enough. Add all of these:
 
 - **Exact paths** to create or modify, and the exact paths that are read-only.

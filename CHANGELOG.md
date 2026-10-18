@@ -78,7 +78,7 @@ test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
   distribution, with `--check` to report without changing anything.
 - `ui`: a full-screen browser over the vault with in-memory filtering, the
   editor handoff, a status change and a confirmed delete, reusing the store's
-  guarantees. Its key bindings are in [`README.md`](README.md).
+  guarantees. Press `?` in the session for the key bindings.
 - `completion` for bash, zsh, fish and PowerShell, and `man` for the root
   command and every subcommand.
 - Documentation: [`docs/FORMAT.md`](docs/FORMAT.md),
