@@ -210,6 +210,33 @@ func TestSummarySplitsOnPythonLineBreaks(t *testing.T) {
 	}
 }
 
+// TestIndexPathUsesForwardSlashes pins the separator divergence: an index path
+// is vault-relative with "/" on every platform, the way the reference writes it,
+// never the platform separator (task 3.13). The platform join differs from "/"
+// only where filepath.Separator does, so on Unix this test and the fixture-parity
+// tests agree by construction; on Windows a revert to filepath.Join fails here.
+func TestIndexPathUsesForwardSlashes(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-slash.md", "---\nid: spec-20261017-slash\nkind: spec\ntitle: Slash\n---\n# Slash\n")
+
+	records, err := Index(root)
+	if err != nil {
+		t.Fatalf("Index: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("got %d records, want 1", len(records))
+	}
+	if got, want := records[0].Path, "specs/2026-10-17-slash.md"; got != want {
+		t.Errorf("record path = %q, want %q", got, want)
+	}
+	if strings.ContainsRune(records[0].Path, '\\') {
+		t.Errorf("record path %q carries a backslash separator", records[0].Path)
+	}
+	if got := filepath.ToSlash(records[0].Path); got != records[0].Path {
+		t.Errorf("record path %q is not slash-separated on this platform", records[0].Path)
+	}
+}
+
 // Index must ignore anything in the document directories that is not Markdown:
 // another file type, a file with no extension, and a directory whose name ends
 // in .md.

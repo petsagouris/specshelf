@@ -54,9 +54,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 // Usage (2) is a problem with the command line itself, knowable without
 // touching the vault: an unknown flag or command, an invalid flag value, two
 // explicit vault selectors used together (ConflictError), an explicit --project
-// the configuration disables (ProjectDisabledError), or a --vault name the
-// configuration does not declare (UnknownVaultError) — the last is the same
-// class as an invalid --kind or --format value.
+// the configuration disables (ProjectDisabledError), a --vault name the
+// configuration does not declare (UnknownVaultError), or a hand-picked --slug
+// that would escape the document directory (InvalidSlugError) — the last two
+// are the same class as an invalid --kind or --format value.
 //
 // Runtime (1) is a problem found while doing the work: NoProjectVaultError (no
 // .specshelf above the working directory), UnknownReferenceError and
@@ -70,8 +71,10 @@ func exitCode(err error) int {
 	var conflict *vault.ConflictError
 	var disabled *vault.ProjectDisabledError
 	var unknownVault *vault.UnknownVaultError
+	var invalidSlug *vault.InvalidSlugError
 	if errors.As(err, &usage) || errors.As(err, &conflict) ||
-		errors.As(err, &disabled) || errors.As(err, &unknownVault) {
+		errors.As(err, &disabled) || errors.As(err, &unknownVault) ||
+		errors.As(err, &invalidSlug) {
 		return exitUsage
 	}
 	message := err.Error()

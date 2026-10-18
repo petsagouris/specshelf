@@ -158,6 +158,28 @@ func TestListDefaultFormatIsTSV(t *testing.T) {
 	}
 }
 
+// TestEmptyListPrintsNothing pins the empty-listing divergence: the reference
+// prints a "No specs or decisions found." line on stdout, which a caller parsing
+// one row per line would read as a document, while specshelf prints nothing
+// (task 3.13).
+func TestEmptyListPrintsNothing(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("SPECSHELF_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+
+	for _, args := range [][]string{
+		{"list"},
+		{"list", "--json"},
+	} {
+		stdout, stderr, code := runCLI(t, append([]string{"--home", root}, args...)...)
+		if code != 0 {
+			t.Errorf("%v exit = %d, want 0\nstderr: %s", args, code, stderr)
+		}
+		if stdout != "" {
+			t.Errorf("%v stdout = %q, want it empty", args, stdout)
+		}
+	}
+}
+
 // TestJSONConflictsWithFormat pins that --json and a disagreeing --format is a
 // usage error rather than one silently winning.
 func TestJSONConflictsWithFormat(t *testing.T) {

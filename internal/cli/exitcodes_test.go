@@ -138,3 +138,26 @@ func TestRunClassifiesTypedErrors(t *testing.T) {
 		}
 	})
 }
+
+// A hand-picked --slug the store refuses is a usage failure, and each rejection
+// leaves the vault untouched: the slug is validated before the vault is created
+// (task 4.12). An explicitly empty value is a rejection too, even though an
+// absent --slug means "derive from the title".
+func TestInvalidSlugIsUsageError(t *testing.T) {
+	for _, slug := range []string{"", "a/b", `a\b`, ".", "..", "../escape"} {
+		t.Run(slug, func(t *testing.T) {
+			t.Setenv("SPECSHELF_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+			root := filepath.Join(t.TempDir(), "vault")
+			_, stderr, code := runCLI(t, "--home", root, "new", "Some Title", "--slug", slug)
+			if code != 2 {
+				t.Errorf("exit code = %d, want 2\nstderr: %s", code, stderr)
+			}
+			if !strings.HasPrefix(stderr, "specshelf: invalid slug") {
+				t.Errorf("stderr = %q, want it to start with the invalid-slug message", stderr)
+			}
+			if entries, err := os.ReadDir(root); err == nil && len(entries) != 0 {
+				t.Errorf("the rejection touched the vault: %v", entries)
+			}
+		})
+	}
+}
