@@ -39,6 +39,21 @@ func assertResolved(t *testing.T, res Resolution, err error, root string, source
 	}
 }
 
+// nativeRoot is the root Resolve reports for a configured path literal: the
+// literal run through filepath.Abs, which is what Resolve itself does to every
+// selector. On Unix the literal is already absolute, but a Windows
+// rooted-without-volume path like "/from-env" resolves against the current
+// drive, so the expectation has to be built natively rather than written with
+// "/".
+func nativeRoot(t *testing.T, path string) string {
+	t.Helper()
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		t.Fatalf("Abs(%q): %v", path, err)
+	}
+	return abs
+}
+
 func TestResolvePrecedence(t *testing.T) {
 	home := t.TempDir()
 
@@ -56,28 +71,28 @@ func TestResolvePrecedence(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "")
 		configFile(t, namedVaultsConfig)
 		res, err := Resolve(Selectors{}, home)
-		assertResolved(t, res, err, "/from-config", SourceConfig)
+		assertResolved(t, res, err, nativeRoot(t, "/from-config"), SourceConfig)
 	})
 
 	t.Run("SPECSHELF_HOME beats the config default", func(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "/from-env")
 		configFile(t, namedVaultsConfig)
 		res, err := Resolve(Selectors{}, home)
-		assertResolved(t, res, err, "/from-env", SourceEnv)
+		assertResolved(t, res, err, nativeRoot(t, "/from-env"), SourceEnv)
 	})
 
 	t.Run("SPECSHELF_HOME beats --vault and the config default", func(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "/from-env")
 		configFile(t, namedVaultsConfig)
 		res, err := Resolve(Selectors{Vault: "work"}, home)
-		assertResolved(t, res, err, "/from-env", SourceEnv)
+		assertResolved(t, res, err, nativeRoot(t, "/from-env"), SourceEnv)
 	})
 
 	t.Run("--home beats SPECSHELF_HOME and the config default", func(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "/from-env")
 		configFile(t, namedVaultsConfig)
 		res, err := Resolve(Selectors{Home: "/from-flag"}, home)
-		assertResolved(t, res, err, "/from-flag", SourceHome)
+		assertResolved(t, res, err, nativeRoot(t, "/from-flag"), SourceHome)
 	})
 
 	t.Run("a relative --home resolves to an absolute root", func(t *testing.T) {
@@ -93,7 +108,7 @@ func TestResolvePrecedence(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "")
 		configFile(t, namedVaultsConfig)
 		res, err := Resolve(Selectors{Vault: "work"}, home)
-		assertResolved(t, res, err, "/named-work", SourceVault)
+		assertResolved(t, res, err, nativeRoot(t, "/named-work"), SourceVault)
 	})
 
 	t.Run("--project beats the config default", func(t *testing.T) {
@@ -225,7 +240,7 @@ func TestResolveProjectSetting(t *testing.T) {
 		t.Setenv("SPECSHELF_HOME", "")
 		configFile(t, "project = false\ndefault_vault = \"/from-config\"\n")
 		res, err := Resolve(Selectors{}, home)
-		assertResolved(t, res, err, "/from-config", SourceConfig)
+		assertResolved(t, res, err, nativeRoot(t, "/from-config"), SourceConfig)
 	})
 }
 
