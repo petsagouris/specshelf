@@ -92,6 +92,7 @@
 
 - [ ] 6.7 Make the command surface's tests path-separator portable so the Windows runner passes: ten testscript scripts and `TestShowAndPathJSON` compare expected output that contains filesystem paths written with `/`, while the tool prints the platform's separator (`vault/specs/…` against `vault\specs\…`), so the expectations are wrong rather than the tool. Keep the tool's native output and the index's documented `/`, and make each expectation native — built from `filepath` rather than a literal — or separator-agnostic; verify on all three runners## Workflow follow-up
 
+- [ ] 6.8 Finish the path-separator audit the Windows run exposed: 6.7 fixed `internal/cli` only, because that is where the truncated log pointed, and the next run failed instead in `internal/vault` (`TestResolvePrecedence` and `TestResolveProjectSetting`, five subtests) and `internal/conformance` (`TestCompatibilityFixtures/list_json`). Audit every remaining test expectation that compares a filesystem path — not just the two that failed, since the log is truncated again — and make each native via `filepath` the way 6.7 did for the command surface; verify on all three runners
 - After M5, review the change with the OpenSpec verify workflow.
 - Archive the change so the eight capability specs are promoted into `openspec/specs/`.
 - Deferred by decision, not to be picked up here: the MCP server, merged multi-vault search, release artifacts and signing.
