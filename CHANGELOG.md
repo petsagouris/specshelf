@@ -3,6 +3,37 @@
 All notable changes to `specshelf` are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] - 2026-10-18
+
+The command surface and the vault format are unchanged from `0.1.0`: this release
+exists because the module is what `go install` downloads, and it no longer
+carries the spec-development tree or the reference fixtures. The distribution
+limitations under `0.1.0` still apply.
+
+### Removed
+
+- The `openspec/` tree: the eight capability specs are `docs/specs/`, the
+  proposal and task list are [`docs/HISTORY-0.1.0.md`](docs/HISTORY-0.1.0.md),
+  and the beads execution mirror and its scripts are gone.
+- The Python compatibility apparatus: `internal/conformance`, the
+  `//go:build conformance` differential suite, `docs/DIVERGENCES.md`, the
+  `conformance` capability spec, and the whole of `testdata/` — 72 files of
+  recorded output and fixtures that every `go install` was downloading.
+- The 17-row key table in the README, and the test that kept it in step with the
+  help view. Press `?` in the session for the keys.
+
+### Changed
+
+- The vault format is specified by this project, in
+  [`docs/specs/vault-format.md`](docs/specs/vault-format.md) and
+  [`docs/FORMAT.md`](docs/FORMAT.md). Every code comment, spec and document that
+  justified a rule as "the reference tool does X" now states the rule.
+- The README is a hub — what it is, install, one quickstart loop, the session and
+  where the documentation lives — and contribution guidance moved to
+  [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- The `0.1.0` entry below was rewritten after its tag, so the text here differs
+  from the copy inside the published `v0.1.0` module, which is frozen.
+
 ## [0.1.0] - 2026-10-18
 
 `specshelf` is a Go implementation of the Markdown vault and the command surface
