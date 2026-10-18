@@ -47,14 +47,31 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	return exitOK
 }
 
-// exitCode classifies a failed command: a usage failure exits 2, anything else
-// exits 1. Cobra's own flag, argument and unknown-command errors carry no type,
-// so their messages are recognised here; the flag error function covers the flag
+// exitCode classifies a failed command against the CLI contract's two failure
+// codes. A usage failure exits 2; every other typed error, and anything
+// unrecognised, exits 1.
+//
+// Usage (2) is a problem with the command line itself, knowable without
+// touching the vault: an unknown flag or command, an invalid flag value, two
+// explicit vault selectors used together (ConflictError), an explicit --project
+// the configuration disables (ProjectDisabledError), or a --vault name the
+// configuration does not declare (UnknownVaultError) — the last is the same
+// class as an invalid --kind or --format value.
+//
+// Runtime (1) is a problem found while doing the work: NoProjectVaultError (no
+// .specshelf above the working directory), UnknownReferenceError and
+// AmbiguousReferenceError (reference resolution against the vault), and
+// OutsideVaultError (a reference that resolved to a path the vault does not
+// own). Cobra's own flag, argument and unknown-command errors carry no type, so
+// their messages are recognised below; the flag error function covers the flag
 // case directly.
 func exitCode(err error) int {
 	var usage *usageError
 	var conflict *vault.ConflictError
-	if errors.As(err, &usage) || errors.As(err, &conflict) {
+	var disabled *vault.ProjectDisabledError
+	var unknownVault *vault.UnknownVaultError
+	if errors.As(err, &usage) || errors.As(err, &conflict) ||
+		errors.As(err, &disabled) || errors.As(err, &unknownVault) {
 		return exitUsage
 	}
 	message := err.Error()
@@ -104,6 +121,8 @@ func NewRootCommand() *cobra.Command {
 		newPrimeCommand(),
 		newPathCommand(),
 		newExportCommand(),
+		newDoctorCommand(),
+		newStatsCommand(),
 		newCompletionCommand(),
 		newManCommand(),
 	)

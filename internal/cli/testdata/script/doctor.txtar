@@ -1,0 +1,43 @@
+# doctor validates the vault: a healthy one prints nothing and exits 0, a vault
+# with a problem gets one stderr line per finding and a non-zero exit. stdout
+# stays empty because the report is diagnostics, not a payload.
+
+# A vault created and maintained by the tool is healthy.
+exec specshelf --home $WORK/healthy init
+exec specshelf --home $WORK/healthy new 'Healthy note'
+exitcode 0 specshelf --home $WORK/healthy doctor
+! stdout .
+! stderr .
+
+# A complete layout, so only the injected problem is reported: an unreadable
+# document. The exit code is non-zero and the finding names the file.
+exec specshelf --home $WORK/broken init
+exitcode 1 specshelf --home $WORK/broken doctor
+stderr '^specshelf: specs/2026-10-17-broken.md: unterminated frontmatter$'
+! stdout .
+
+# A document whose declared kind disagrees with its directory is reported too.
+exec specshelf --home $WORK/mismatch init
+exitcode 1 specshelf --home $WORK/mismatch doctor
+stderr '^specshelf: specs/2026-10-17-wrong.md: kind "decision" does not match the specs directory$'
+! stdout .
+
+# --index regenerates the index after the report; the healthy vault exits 0.
+exec specshelf --home $WORK/healthy doctor --index
+exists $WORK/healthy/index.jsonl
+
+-- broken/specs/2026-10-17-broken.md --
+---
+id: spec-20261017-broken
+kind: spec
+title: Broken
+-- mismatch/specs/2026-10-17-wrong.md --
+---
+id: spec-20261017-wrong
+kind: decision
+title: Wrong
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+---
+# Wrong
