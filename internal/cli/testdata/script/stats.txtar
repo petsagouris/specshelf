@@ -1,0 +1,56 @@
+# stats prints the vault's counts grouped by kind, status, repo and tag as
+# three tab-separated columns — group, key, count — with a stable order.
+
+exec specshelf --home $WORK/vault stats
+cmp stdout stats.tsv
+
+# An empty vault has nothing to count.
+exec specshelf --home $WORK/empty stats
+! stdout .
+
+-- stats.tsv --
+kind	decision	1
+kind	spec	2
+status	accepted	1
+status	active	2
+repo	billing	1
+repo	infra	1
+tag	tooling	2
+-- vault/specs/2026-10-17-alpha.md --
+---
+id: spec-20261017-alpha
+kind: spec
+title: Alpha
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - billing
+tags:
+  - tooling
+---
+# Alpha
+-- vault/specs/2026-10-17-delta.md --
+---
+id: spec-20261017-delta
+kind: spec
+title: Delta
+status: active
+created: 2026-10-17
+updated: 2026-10-17
+repos:
+  - infra
+---
+# Delta
+-- vault/decisions/2026-10-17-gamma.md --
+---
+id: decision-20261017-gamma
+kind: decision
+title: Gamma
+status: accepted
+created: 2026-10-17
+updated: 2026-10-17
+tags:
+  - tooling
+---
+# Gamma

@@ -1,0 +1,14 @@
+# ui starts the interactive session only when stdout is a terminal. Redirected,
+# it exits non-zero with a message pointing at the non-interactive commands and
+# does not touch the vault.
+
+env VISUAL=fakeeditor
+
+exitcode 1 specshelf --home $WORK/vault ui
+stderr '^specshelf: stdout is not a terminal; use "specshelf list", "specshelf search" or "specshelf show" for non-interactive output$'
+! stdout .
+! exists $WORK/vault/index.jsonl
+
+# The command is advertised in the root help output.
+exec specshelf --help
+stdout 'ui\s+Browse and edit the vault in an interactive session\.'
