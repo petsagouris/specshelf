@@ -4,7 +4,8 @@
 and exits. There is no daemon, no watcher and no network listener, so the
 packages below are the whole of the runtime structure.
 
-The split is decision D1 in `openspec/changes/specshelf-v1/design.md`: one
+The split is decision D1 in
+`openspec/changes/archive/2026-10-18-specshelf-v1/design.md`: one
 package per reason to change, rather than one flat package or a package per
 command. This file records the boundaries that exist; the format of what is on
 disk belongs to [`FORMAT.md`](FORMAT.md), the configuration file to

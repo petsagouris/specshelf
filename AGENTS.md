@@ -15,10 +15,10 @@ are building is specified in OpenSpec, not in this file.
 
 | What | Where |
 | --- | --- |
-| Why, what changes, breaking changes, out of scope | `openspec/changes/specshelf-v1/proposal.md` |
-| The behaviour contract to satisfy | `openspec/changes/specshelf-v1/specs/<capability>/spec.md` |
-| Design decisions D1–D13, each with its rejected alternatives | `openspec/changes/specshelf-v1/design.md` |
-| The work, with each task's own verification | `openspec/changes/specshelf-v1/tasks.md` |
+| The behaviour contract to satisfy | `openspec/specs/<capability>/spec.md` |
+| Why, what changes, breaking changes, out of scope | `openspec/changes/archive/2026-10-18-specshelf-v1/proposal.md` |
+| Design decisions D1–D13, each with its rejected alternatives | `openspec/changes/archive/2026-10-18-specshelf-v1/design.md` |
+| The work, with each task's own verification | `openspec/changes/archive/2026-10-18-specshelf-v1/tasks.md` |
 | Non-negotiable project constraints | `openspec/config.yaml` |
 
 Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
@@ -72,10 +72,14 @@ must not be hand-edited.
 
 ## Execution mirror (beads)
 
-`openspec/changes/specshelf-v1/tasks.md` is **authoritative** for scope and
-completion. A beads board mirrors it so execution state — claims, blockers, work
-found mid-task — survives a context reset. The board is project-local
-(`.beads/`), derived, and never committed.
+A change's `tasks.md` is **authoritative** for scope and completion, and a beads
+board mirrors it so execution state — claims, blockers, work found mid-task —
+survives a context reset. The board is project-local (`.beads/`), derived, and
+never committed. The first change,
+`openspec/changes/archive/2026-10-18-specshelf-v1/tasks.md`, is archived with
+every task complete and its board closed. `scripts/bd-sync.py` has that change's
+path compiled in, so repoint it at the next change's `tasks.md` before its first
+sync.
 
 ```
 scripts/bd-sync.py                 # after editing tasks.md; idempotent, --dry-run supported
