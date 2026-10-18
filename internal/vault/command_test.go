@@ -441,6 +441,37 @@ func TestSetStatusRefusesOutsideVault(t *testing.T) {
 	}
 }
 
+// LinkSessions is confined to the vault the same way Edit and SetStatus are: a
+// resolved document outside the root is refused before anything is written, and
+// the outside file is left byte-identical.
+func TestLinkSessionsRefusesOutsideVault(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "vault")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	const content = "---\nid: spec-20261017-note\nkind: spec\ntitle: Note\nstatus: active\n---\n# Note\n"
+	if err := os.WriteFile(outside, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := mustRead(t, outside)
+
+	_, err := LinkSessions(root, outside, []string{"s1"})
+	if after := mustRead(t, outside); !bytes.Equal(after, before) {
+		t.Errorf("outside file was rewritten:\n got %q\nwant %q", after, before)
+	}
+	var outsideErr *OutsideVaultError
+	if !errors.As(err, &outsideErr) {
+		t.Fatalf("LinkSessions error = %v, want *OutsideVaultError", err)
+	}
+	if outsideErr.Path != outside || !strings.Contains(err.Error(), outside) {
+		t.Errorf("error %q must name the path %s", err.Error(), outside)
+	}
+	if !strings.Contains(err.Error(), root) {
+		t.Errorf("error %q must name the root %s", err.Error(), root)
+	}
+}
+
 func readID(t *testing.T, path string) string {
 	t.Helper()
 	doc, err := readDocument(path)

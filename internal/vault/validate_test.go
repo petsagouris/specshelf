@@ -2,15 +2,22 @@ package vault
 
 import (
 	"maps"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// A vault the tool created and maintains is healthy: nothing to read twice,
-// nothing whose kind disagrees with its directory, and therefore no problems.
+// A vault the tool created and maintains is healthy: the layout is present,
+// nothing to read twice, nothing whose kind disagrees with its directory,
+// nothing whose id or file name disagrees with its title, and therefore no
+// problems.
 func TestValidateHealthyVault(t *testing.T) {
 	t.Run("a healthy vault", func(t *testing.T) {
 		root := t.TempDir()
+		if err := initVault(root); err != nil {
+			t.Fatalf("initVault: %v", err)
+		}
 		writeDoc(t, root, "specs/2026-10-17-a.md",
 			"---\nid: spec-20261017-a\nkind: spec\ntitle: A\nstatus: active\n---\n# A\n")
 		writeDoc(t, root, "decisions/2026-10-17-b.md",
@@ -27,13 +34,17 @@ func TestValidateHealthyVault(t *testing.T) {
 		if v.Problems() != 0 {
 			t.Errorf("Problems = %d, want 0 for a healthy vault: %+v", v.Problems(), v)
 		}
-		if len(v.Unreadable) != 0 || len(v.Mismatches) != 0 {
+		if len(v.Missing) != 0 || len(v.Unreadable) != 0 || len(v.Mismatches) != 0 || len(v.Identities) != 0 {
 			t.Errorf("Validate = %+v, want no findings", v)
 		}
 	})
 
 	t.Run("an empty vault", func(t *testing.T) {
-		v, err := Validate(t.TempDir())
+		root := t.TempDir()
+		if err := initVault(root); err != nil {
+			t.Fatalf("initVault: %v", err)
+		}
+		v, err := Validate(root)
 		if err != nil {
 			t.Fatalf("Validate: %v", err)
 		}
@@ -47,6 +58,9 @@ func TestValidateHealthyVault(t *testing.T) {
 // while the readable documents are unaffected.
 func TestValidateReportsUnreadableDocument(t *testing.T) {
 	root := t.TempDir()
+	if err := initVault(root); err != nil {
+		t.Fatalf("initVault: %v", err)
+	}
 	writeDoc(t, root, "specs/2026-10-17-good.md",
 		"---\nid: spec-20261017-good\nkind: spec\ntitle: Good\n---\n# Good\n")
 	writeDoc(t, root, "specs/2026-10-17-broken.md",
@@ -76,6 +90,9 @@ func TestValidateReportsUnreadableDocument(t *testing.T) {
 // directory but is not reported.
 func TestValidateReportsKindMismatch(t *testing.T) {
 	root := t.TempDir()
+	if err := initVault(root); err != nil {
+		t.Fatalf("initVault: %v", err)
+	}
 	writeDoc(t, root, "specs/2026-10-17-misplaced.md",
 		"---\nid: spec-20261017-misplaced\nkind: decision\ntitle: Misplaced\n---\n# Misplaced\n")
 	writeDoc(t, root, "decisions/2026-10-17-in-place.md",
@@ -102,6 +119,194 @@ func TestValidateReportsKindMismatch(t *testing.T) {
 	if v.Problems() != 1 {
 		t.Errorf("Problems = %d, want 1 (doctor exits non-zero for it)", v.Problems())
 	}
+}
+
+// A vault missing a directory or file that initialising a vault creates is a
+// finding, counted by Problems; an extra directory or file the initialiser does
+// not create is none of the validator's business.
+func TestValidateReportsMissingLayout(t *testing.T) {
+	t.Run("a missing README and templates are findings", func(t *testing.T) {
+		root := t.TempDir()
+		if err := initVault(root); err != nil {
+			t.Fatalf("initVault: %v", err)
+		}
+		if err := os.Remove(filepath.Join(root, "README.md")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.RemoveAll(filepath.Join(root, "templates")); err != nil {
+			t.Fatal(err)
+		}
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		want := map[string]bool{
+			"templates":             false,
+			"templates/spec.md":     false,
+			"templates/decision.md": false,
+			"README.md":             false,
+		}
+		if len(v.Missing) != len(want) {
+			t.Fatalf("Missing = %+v, want %d findings", v.Missing, len(want))
+		}
+		for _, finding := range v.Missing {
+			if _, ok := want[finding.Path]; !ok {
+				t.Errorf("unexpected missing finding %q", finding.Path)
+				continue
+			}
+			want[finding.Path] = true
+			if !strings.Contains(finding.Text(), finding.Path) {
+				t.Errorf("Text = %q, want it to name %q", finding.Text(), finding.Path)
+			}
+		}
+		for path, seen := range want {
+			if !seen {
+				t.Errorf("%s was not reported as missing", path)
+			}
+		}
+		if v.Problems() != 4 {
+			t.Errorf("Problems = %d, want 4 (doctor exits non-zero for them)", v.Problems())
+		}
+	})
+
+	t.Run("an extra directory or file is not a finding", func(t *testing.T) {
+		root := t.TempDir()
+		if err := initVault(root); err != nil {
+			t.Fatalf("initVault: %v", err)
+		}
+		writeDoc(t, root, "archive/2026-10-17-extra.md", "not a document\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Missing) != 0 {
+			t.Errorf("Missing = %+v, want none: the validator owns only what the initialiser creates", v.Missing)
+		}
+	})
+}
+
+// A document whose declared id, or whose file name, does not match its title is
+// a finding; the legitimate -N collision suffix the exclusive-create retry adds
+// is not. The expectation is derived from slugify/documentID/documentPath, with
+// the creation date taken from the file name.
+func TestValidateReportsIdentityMismatch(t *testing.T) {
+	newVault := func(t *testing.T) string {
+		t.Helper()
+		root := t.TempDir()
+		if err := initVault(root); err != nil {
+			t.Fatalf("initVault: %v", err)
+		}
+		return root
+	}
+
+	t.Run("an id that disagrees with the title", func(t *testing.T) {
+		root := newVault(t)
+		writeDoc(t, root, "specs/2026-10-17-note.md",
+			"---\nid: spec-20261017-wrong\nkind: spec\ntitle: Note\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 1 {
+			t.Fatalf("Identities = %+v, want exactly the id finding", v.Identities)
+		}
+		got := v.Identities[0]
+		if got.Field != "id" || got.Got != "spec-20261017-wrong" || got.Want != "spec-20261017-note" {
+			t.Errorf("finding = %+v, want the id and the title-derived id", got)
+		}
+		for _, part := range []string{got.Path, "id", got.Got, got.Want} {
+			if !strings.Contains(got.Text(), part) {
+				t.Errorf("Text = %q, want it to contain %q", got.Text(), part)
+			}
+		}
+		if v.Problems() != 1 {
+			t.Errorf("Problems = %d, want 1 (doctor exits non-zero for it)", v.Problems())
+		}
+	})
+
+	t.Run("a file name that disagrees with the title", func(t *testing.T) {
+		root := newVault(t)
+		writeDoc(t, root, "specs/2026-10-17-other.md",
+			"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 1 {
+			t.Fatalf("Identities = %+v, want exactly the file name finding", v.Identities)
+		}
+		got := v.Identities[0]
+		if got.Field != "file name" || got.Got != "2026-10-17-other.md" || got.Want != "2026-10-17-note.md" {
+			t.Errorf("finding = %+v, want the name and the title-derived name", got)
+		}
+		if v.Problems() != 1 {
+			t.Errorf("Problems = %d, want 1 (doctor exits non-zero for it)", v.Problems())
+		}
+	})
+
+	t.Run("a -N collision is not a finding", func(t *testing.T) {
+		root := newVault(t)
+		// A second document of one title gets -2 on both its id and its name.
+		// That is the exclusive-create collision marker (D6), not a mismatch.
+		writeDoc(t, root, "specs/2026-10-17-note-2.md",
+			"---\nid: spec-20261017-note-2\nkind: spec\ntitle: Note\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 0 {
+			t.Errorf("Identities = %+v, want none for a -2 collision", v.Identities)
+		}
+	})
+
+	t.Run("a file name with no date prefix is a finding", func(t *testing.T) {
+		root := newVault(t)
+		writeDoc(t, root, "specs/note.md",
+			"---\nid: spec-20261017-note\nkind: spec\ntitle: Note\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 1 || v.Identities[0].Field != "file name" || v.Identities[0].Want != "YYYY-MM-DD-note.md" {
+			t.Fatalf("Identities = %+v, want the undated name reported against the dated form", v.Identities)
+		}
+	})
+
+	t.Run("the date comes from the file name, not created", func(t *testing.T) {
+		root := newVault(t)
+		// The id and the name agree on 2026-10-16; created says otherwise and
+		// is deliberately not consulted.
+		writeDoc(t, root, "specs/2026-10-16-note.md",
+			"---\nid: spec-20261016-note\nkind: spec\ntitle: Note\ncreated: 2026-10-17\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 0 {
+			t.Errorf("Identities = %+v, want none: created is not consulted", v.Identities)
+		}
+	})
+
+	t.Run("a document that declares no id is not an identity finding", func(t *testing.T) {
+		root := newVault(t)
+		writeDoc(t, root, "specs/2026-10-17-note.md",
+			"---\nkind: spec\ntitle: Note\n---\n# Note\n")
+
+		v, err := Validate(root)
+		if err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		if len(v.Identities) != 0 {
+			t.Errorf("Identities = %+v, want none: there is no declared id to disagree", v.Identities)
+		}
+	})
 }
 
 // Stats counts documents grouped by kind, status, repo and tag. A document with
