@@ -5,35 +5,38 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.1.0] - 2026-10-18
 
-`specshelf` is a Go port and superset of
-[`agent-spec-vault`](https://github.com/xixifast/agent-spec-vault) v0.1.2: the
-same vault, the same documents and the same ids, in a single binary. One name
-differs from the Python CLI — there is no `specv` alias and `SPECV_HOME` is not
-read; the equivalent is `SPECSHELF_HOME`.
+`specshelf` is a Go implementation of the Markdown vault and the command surface
+[`agent-spec-vault`](https://github.com/xixifast/agent-spec-vault) v0.1.2 began:
+the same vault directory, the same documents and the same ids, in a single
+binary, so a vault written by the Python tool keeps working. There is no `specv`
+alias and `SPECV_HOME` is not read; the equivalent is `SPECSHELF_HOME`.
 
-### Parity surface
+From this release the vault format is specified by this project, in
+[`docs/specs/vault-format.md`](docs/specs/vault-format.md) and
+[`docs/FORMAT.md`](docs/FORMAT.md), rather than by the tool the port started
+from.
 
-- The ten reference commands, with the reference's flag names and defaults:
-  `init`, `new`, `decision`, `link-session`, `list`, `search`, `show`, `index`,
-  `prime`, `path`.
+### The vault and the base commands
+
+- The ten base commands, with stable flag names and defaults: `init`, `new`,
+  `decision`, `link-session`, `list`, `search`, `show`, `index`, `prime`, `path`.
 - The vault format: the directory layout, the frontmatter fields, the
   `spec-`/`decision-` document id with its `YYYYMMDD` date and `-N` collision
   suffix, the `YYYY-MM-DD-<slug>.md` file name, and the `index.jsonl` record.
   See [`docs/FORMAT.md`](docs/FORMAT.md).
-- Compatibility with the Python tool, checked in both directions: a vault
-  written by either is readable by the other. The default suite compares
-  specshelf's output and files against committed fixtures from the reference;
-  the `//go:build conformance` suite runs both tools against equivalent vaults
-  and fails on a difference no entry in
-  [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md) explains.
+- A vault that already exists keeps working: the reader normalises what it finds
+  and the writer never emits a document it cannot read back. The slug rules, the
+  id form and the index encoding are pinned by tests over the values that are
+  hardest to get right — accented, CJK and emoji titles, punctuation-only and
+  empty titles, and the awkward frontmatter shapes such documents carry.
 
-### Corrected behaviours
+### Behaviour decisions
 
-Each item is an intentional difference from the reference, recorded with its own
-test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
+Each item is a deliberate choice, here and in
+[`docs/specs/`](docs/specs/), with a test that asserts it.
 
 - Frontmatter is always written as valid YAML, so a third-party parser can read
-  it; the reference's writer emits a private line dialect.
+  it.
 - Every write is atomic — the complete bytes to a temporary file, flushed to
   disk, then renamed over the target — and creation is exclusive, retrying the
   next `-N` name. A crash, a full disk or two concurrent writers can no longer
@@ -41,9 +44,9 @@ test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
 - An empty value reads as the empty scalar rather than the text `[]`, and an
   empty list field is written `[]` rather than a bare key a YAML reader takes
   for null.
-- The reader keeps documents the reference mangles or discards: a byte-order
-  mark, an empty frontmatter block, CRLF and lone-CR endings, quoted keys and
-  quoted values, list items at any indentation, and values holding exotic line
+- The reader keeps documents a looser writer produces: a byte-order mark, an
+  empty frontmatter block, CRLF and lone-CR endings, quoted keys and quoted
+  values, list items at any indentation, and values holding exotic line
   separators. A rewrite emits LF.
 - An unreadable document is skipped with one warning line on stderr naming its
   path and reason and a successful exit, instead of disappearing from listings
@@ -59,7 +62,7 @@ test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
 
 ### New capabilities
 
-- Nine commands beyond the reference set: `edit`, `rm` (with `--dry-run`),
+- Nine commands beyond the base set: `edit`, `rm` (with `--dry-run`),
   `status`, `doctor`, `export` (JSON and JSONL), `stats`, `sync`, `upgrade` and
   `ui`.
 - Machine-readable output: `--json` on the read commands, `--format
@@ -82,9 +85,10 @@ test in [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md).
 - `completion` for bash, zsh, fish and PowerShell, and `man` for the root
   command and every subcommand.
 - Documentation: [`docs/FORMAT.md`](docs/FORMAT.md),
-  [`docs/DIVERGENCES.md`](docs/DIVERGENCES.md),
-  [`docs/CONFIG.md`](docs/CONFIG.md) and
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+  [`docs/CONFIG.md`](docs/CONFIG.md),
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
+  [`docs/specs/`](docs/specs/) and
+  [`docs/HISTORY-0.1.0.md`](docs/HISTORY-0.1.0.md).
 
 ### Known limitations
 

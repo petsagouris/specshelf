@@ -1,8 +1,7 @@
 package frontmatter
 
 import (
-	"os"
-	"path/filepath"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -87,9 +86,9 @@ func TestMarshalQuotesValuesThatWouldChangeMeaning(t *testing.T) {
 	}
 }
 
-// Dates stay bare on purpose: created and updated are written that way by the
-// reference tool, and quoting every document's dates would cost byte
-// compatibility for a type distinction nothing consumes.
+// Dates stay bare on purpose: created and updated are written that way, and
+// quoting every document's dates would trade a stable byte form for a type
+// distinction nothing consumes.
 func TestMarshalLeavesDatesUnquoted(t *testing.T) {
 	for _, value := range []string{"2026-10-17", "2026-10-17T21:35:40Z"} {
 		if got := renderScalar(value); got != value {
@@ -270,38 +269,24 @@ func TestMarshalQuotesAKeyItsReaderWouldMisread(t *testing.T) {
 	}
 }
 
-// Rewriting a document the reference tool wrote must not lose any value — the
-// bytes will differ where we quote or spell things differently, but every field
-// and the whole body have to come back the same.
-func TestRewriteOfReferenceFixturesKeepsEveryValue(t *testing.T) {
-	for _, vault := range []string{"python_vault", "python_vault_rewritten"} {
-		root := filepath.Join("..", "..", "testdata", vault)
-		for _, dir := range []string{"specs", "decisions"} {
-			entries, err := os.ReadDir(filepath.Join(root, dir))
+// Rewriting a document must not lose any value — the bytes will differ where the
+// writer quotes or spells things differently, but every field and the whole body
+// have to come back the same, or a rewrite silently damages a vault.
+func TestRewriteKeepsEveryValue(t *testing.T) {
+	for i, doc := range sampleDocuments {
+		t.Run(fmt.Sprintf("sample %d", i), func(t *testing.T) {
+			before, err := Parse("specs/sample.md", []byte(doc))
 			if err != nil {
-				t.Fatalf("reading %s: %v", dir, err)
+				t.Fatalf("Parse: %v", err)
 			}
-			for _, entry := range entries {
-				name := filepath.Join(dir, entry.Name())
-				t.Run(vault+"/"+name, func(t *testing.T) {
-					original, err := os.ReadFile(filepath.Join(root, name))
-					if err != nil {
-						t.Fatalf("reading %s: %v", name, err)
-					}
-					before, err := Parse(name, original)
-					if err != nil {
-						t.Fatalf("Parse: %v", err)
-					}
-					after, err := Parse(name, Marshal(before))
-					if err != nil {
-						t.Fatalf("re-parsing our own output: %v", err)
-					}
-					if got, want := fields(after), fields(before); !reflect.DeepEqual(got, want) {
-						t.Errorf("a rewrite changed the document:\n got: %#v\nwant: %#v", got, want)
-					}
-				})
+			after, err := Parse("specs/sample.md", Marshal(before))
+			if err != nil {
+				t.Fatalf("re-parsing our own output: %v", err)
 			}
-		}
+			if got, want := fields(after), fields(before); !reflect.DeepEqual(got, want) {
+				t.Errorf("a rewrite changed the document:\n got: %#v\nwant: %#v", got, want)
+			}
+		})
 	}
 }
 

@@ -10,8 +10,7 @@ import (
 )
 
 // Filters select documents for the collection commands. An empty field, and the
-// kind "all", matches everything; the fields are ANDed, as in the reference
-// tool.
+// kind "all", matches everything; the fields are ANDed.
 type Filters struct {
 	Kind         string
 	Repo         string
@@ -41,8 +40,8 @@ func (f Filters) matches(r IndexRecord) bool {
 }
 
 // Query returns the records matching f, ordered by updated descending and then
-// id descending — the reference tool's sort — with one warning per unreadable
-// document. It is the store behind `list` and `prime`.
+// id descending, with one warning per unreadable document. It is the store behind
+// `list` and `prime`.
 func Query(root string, f Filters) ([]IndexRecord, []Warning, error) {
 	records, warnings, err := List(root)
 	if err != nil {
@@ -58,8 +57,7 @@ func Query(root string, f Filters) ([]IndexRecord, []Warning, error) {
 	return filtered, warnings, nil
 }
 
-// sortRecords orders records by updated descending, then id descending, which is
-// `sorted(..., key=(updated, id), reverse=True)` in the reference tool.
+// sortRecords orders records by updated descending, then id descending.
 func sortRecords(records []IndexRecord) {
 	sort.SliceStable(records, func(i, j int) bool {
 		if records[i].Updated != records[j].Updated {
@@ -139,9 +137,9 @@ func Search(root, query string, f Filters) ([]Match, []Warning, error) {
 	return matches, warnings, nil
 }
 
-// metadataText is the lowercased JSON of a document's metadata, the haystack the
-// reference searches before the body. It is built in the reference's key order
-// so the bytes match json.dumps(metadata, ensure_ascii=False).lower().
+// metadataText is the lowercased JSON of a document's metadata, the haystack
+// searched before the body. It is built in the index record's field order, so the
+// text a match is found in is the text the record holds.
 //
 // shortcut: only the known fields are searched; an unknown key in a document's
 // frontmatter is not, because the parsed map has lost the file's key order.
@@ -177,9 +175,9 @@ func metadataText(record IndexRecord) string {
 	return strings.ToLower(string(b))
 }
 
-// splitLines splits a body the way Python's str.splitlines does, so a match's
-// line number is the one the reference reports: it breaks at the same characters
-// as summary and drops the empty tail after a trailing break.
+// splitLines splits a body into lines the same way summary breaks them, so a
+// reported line number counts the lines a reader sees, and the empty tail after a
+// trailing break is dropped.
 func splitLines(body string) []string {
 	var lines []string
 	start := 0

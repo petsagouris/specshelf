@@ -8,68 +8,32 @@ import (
 	"testing"
 )
 
-const (
-	fixtureEmptyTitle = `"title": "[]"`
-	ourEmptyTitle     = `"title": ""`
-)
+// TestIndexEncodesAVault pins the whole file byte for byte: the field order, the
+// spelling of an empty list and an empty scalar, literal UTF-8, the summary, and
+// the newline after the last line. The expectation is written out here rather
+// than kept in a separate file, so a change to the encoder has to change the test that
+// describes it.
+func TestIndexEncodesAVault(t *testing.T) {
+	root := t.TempDir()
+	writeDoc(t, root, "specs/2026-10-17-cjk.md", "---\nid: spec-20261017-cjk\nkind: spec\ntitle: 质量分析展示契约\nstatus: draft\ncreated: 2026-10-17\nupdated: 2026-10-17\nrepos:\ntags:\ncodex_sessions:\n---\n# 质量分析展示契约\n\n中文摘要行。\n")
+	writeDoc(t, root, "specs/2026-10-17-first.md", "---\nid: spec-20261017-first\nkind: spec\ntitle: First\nstatus: active\ncreated: 2026-10-17\nupdated: 2026-10-18\nrepos:\n  - billing\ntags:\n  - reliability\ncodex_sessions:\n---\n# First\n\nA summary line.\n")
+	writeDoc(t, root, "decisions/2026-10-17-use-markdown.md", "---\nid: decision-20261017-use-markdown\nkind: decision\ntitle: Use Markdown\nstatus: accepted\ncreated: 2026-10-17\nupdated: 2026-10-17\nrepos:\ntags:\ncodex_sessions:\n  - session-a\n---\n# Use Markdown\n")
 
-// readFixture reads a reference file, failing the test when it cannot.
-func readFixture(t *testing.T, path string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read fixture %s: %v", path, err)
-	}
-	return data
-}
-
-// assertEmptyTitleDivergence pins the one intentional difference: the reference
-// reads the empty-title document's `title:` back as an empty list and records
-// the text "[]", while our reader reads it as the empty scalar (task 2.3). The
-// assertion fails if a future fixture stops exercising it, so the substitution
-// below can never hide another difference.
-func assertEmptyTitleDivergence(t *testing.T, fixture []byte) {
-	t.Helper()
-	if n := bytes.Count(fixture, []byte(fixtureEmptyTitle)); n != 1 {
-		t.Fatalf("fixture contains %d occurrences of %s, want exactly 1", n, fixtureEmptyTitle)
-	}
-}
-
-func TestIndexReferenceVaultParity(t *testing.T) {
-	root := filepath.Join("..", "..", "testdata", "python_vault")
 	records, err := Index(root)
 	if err != nil {
-		t.Fatalf("Index(%q): %v", root, err)
-	}
-	if len(records) != 10 {
-		t.Fatalf("Index(%q) returned %d records, want 10", root, len(records))
+		t.Fatalf("Index: %v", err)
 	}
 
-	want := readFixture(t, filepath.Join(root, "index.jsonl"))
-	assertEmptyTitleDivergence(t, want)
-	want = bytes.ReplaceAll(want, []byte(fixtureEmptyTitle), []byte(ourEmptyTitle))
+	// Specs before decisions, and file name within a directory, so the cjk
+	// document precedes the first one.
+	want := strings.Join([]string{
+		`{"id": "spec-20261017-cjk", "kind": "spec", "title": "质量分析展示契约", "status": "draft", "created": "2026-10-17", "updated": "2026-10-17", "repos": [], "tags": [], "codex_sessions": [], "path": "specs/2026-10-17-cjk.md", "summary": "中文摘要行。"}`,
+		`{"id": "spec-20261017-first", "kind": "spec", "title": "First", "status": "active", "created": "2026-10-17", "updated": "2026-10-18", "repos": ["billing"], "tags": ["reliability"], "codex_sessions": [], "path": "specs/2026-10-17-first.md", "summary": "A summary line."}`,
+		`{"id": "decision-20261017-use-markdown", "kind": "decision", "title": "Use Markdown", "status": "accepted", "created": "2026-10-17", "updated": "2026-10-17", "repos": [], "tags": [], "codex_sessions": ["session-a"], "path": "decisions/2026-10-17-use-markdown.md", "summary": ""}`,
+	}, "\n") + "\n"
 
-	if got := EncodeIndex(records); !bytes.Equal(got, want) {
-		t.Errorf("index bytes differ from the reference:\n got %q\nwant %q", got, want)
-	}
-}
-
-func TestIndexRewrittenVaultParity(t *testing.T) {
-	root := filepath.Join("..", "..", "testdata", "python_vault_rewritten")
-	records, err := Index(root)
-	if err != nil {
-		t.Fatalf("Index(%q): %v", root, err)
-	}
-	if len(records) != 10 {
-		t.Fatalf("Index(%q) returned %d records, want 10", root, len(records))
-	}
-
-	want := readFixture(t, filepath.Join(root, "index.jsonl"))
-	assertEmptyTitleDivergence(t, want)
-	want = bytes.ReplaceAll(want, []byte(fixtureEmptyTitle), []byte(ourEmptyTitle))
-
-	if got := EncodeIndex(records); !bytes.Equal(got, want) {
-		t.Errorf("rewritten index bytes differ from the reference:\n got %q\nwant %q", got, want)
+	if got := string(EncodeIndex(records)); got != want {
+		t.Errorf("EncodeIndex rendered:\n got %q\nwant %q", got, want)
 	}
 }
 
@@ -186,10 +150,10 @@ func TestIndexTemporaryVault(t *testing.T) {
 	})
 }
 
-// The summary splits on Python's str.splitlines breaks, not just \n: a body
-// holding U+2028, a vertical tab or another exotic separator summarises the way
-// the reference implementation does, not as one long line.
-func TestSummarySplitsOnPythonLineBreaks(t *testing.T) {
+// The summary breaks on every character a line can break on, not just \n: a body
+// holding a vertical tab, U+2028 or another exotic separator summarises on its
+// first line, not as one long line.
+func TestSummarySplitsOnEveryLineBreak(t *testing.T) {
 	cases := []struct{ name, body, want string }{
 		{"newline", "first\nsecond", "first"},
 		{"carriage return", "first\rsecond", "first"},
@@ -210,11 +174,11 @@ func TestSummarySplitsOnPythonLineBreaks(t *testing.T) {
 	}
 }
 
-// TestIndexPathUsesForwardSlashes pins the separator divergence: an index path
-// is vault-relative with "/" on every platform, the way the reference writes it,
-// never the platform separator (task 3.13). The platform join differs from "/"
-// only where filepath.Separator does, so on Unix this test and the fixture-parity
-// tests agree by construction; on Windows a revert to filepath.Join fails here.
+// TestIndexPathUsesForwardSlashes pins the separator rule: an index path is
+// vault-relative with "/" on every platform, never the platform separator. The
+// platform join differs from "/" only where filepath.Separator does, so on Unix
+// this test passes by construction; on Windows a revert to filepath.Join fails
+// here.
 func TestIndexPathUsesForwardSlashes(t *testing.T) {
 	root := t.TempDir()
 	writeDoc(t, root, "specs/2026-10-17-slash.md", "---\nid: spec-20261017-slash\nkind: spec\ntitle: Slash\n---\n# Slash\n")

@@ -33,7 +33,7 @@ func newInitCommand() *cobra.Command {
 }
 
 // newCreateCommand builds `new` (a spec) or `decision`, which differ only in the
-// kind they create and the reference tool's aliases for the multi-value flags.
+// kind they create and the aliases for the multi-value flags.
 func newCreateCommand(use, kind, short string) *cobra.Command {
 	var repos, tags, sessions stringList
 	var current bool

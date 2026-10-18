@@ -2,9 +2,9 @@
 
 ## Purpose
 Defines the on-disk contract of a vault: directory layout, document frontmatter
-and body, document identity, file naming and the JSONL index, so that documents
-written by specshelf and by the Python reference implementation stay
-interchangeable in both directions.
+and body, document identity, file naming and the JSONL index. The contract is
+what keeps a vault readable across versions: the reader tolerates what the writer
+does not emit, and the writer only ever emits what the reader can read back.
 
 ## Requirements
 
@@ -48,16 +48,16 @@ null to a YAML reader and would not read back as an empty list.
 
 ### Requirement: Tolerant frontmatter reading
 
-The reader SHALL accept the frontmatter dialect the Python implementation
-writes, including unquoted scalars, quoted scalars, `key:` lines that introduce
-empty list values, `  - ` list items, blank lines, and scalar values containing
-`:` or `#`. A document with no frontmatter SHALL be readable with empty
-metadata rather than rejected. An unterminated frontmatter block SHALL be
-reported as an error naming the file.
+The reader SHALL accept the frontmatter dialect the writer emits, and the looser
+shapes a document in the wild may carry: unquoted scalars, quoted scalars, `key:`
+lines that introduce empty list values, `  - ` list items, blank lines, and
+scalar values containing `:` or `#`. A document with no frontmatter SHALL be
+readable with empty metadata rather than rejected. An unterminated frontmatter
+block SHALL be reported as an error naming the file.
 
 #### Scenario: Reading a title containing a colon and a hash
 
-- **WHEN** a document written by the Python tool has `title: Decision: use #1 approach`
+- **WHEN** a document carries `title: Decision: use #1 approach`
 - **THEN** the parsed title is exactly `Decision: use #1 approach`
 
 #### Scenario: Empty values mean the empty scalar
@@ -75,14 +75,15 @@ reported as an error naming the file.
 - **WHEN** a file begins with `---` and has no closing `---` line, or that line is not newline-terminated
 - **THEN** reading it fails with an error that names the file path
 
-### Requirement: Reader tolerance beyond the reference parser
+### Requirement: Reader tolerance for documents the writer did not emit
 
-Where the reference parser mangles or discards a document, the reader SHALL read
-it without losing data: line endings and a byte-order mark are normalised, quoted
-values are unquoted, an empty frontmatter block is readable, list items are
-recognised at any indentation, an intervening line does not close an open list,
-list items with no value are ignored, and values are not truncated at characters
-the reference parser treats as line breaks.
+A document that the writer did not emit exactly — written by another editor,
+another tool, or an older version — SHALL read without losing data: line endings
+and a byte-order mark are normalised, quoted values are unquoted, an empty
+frontmatter block is readable, list items are recognised at any indentation, an
+intervening line does not close an open list, list items with no value are
+ignored, and values are not truncated at characters some parsers treat as line
+breaks.
 
 #### Scenario: CRLF line endings
 
@@ -121,7 +122,7 @@ the reference parser treats as line breaks.
 
 #### Scenario: Exotic line separators do not truncate a value
 
-- **WHEN** a value contains a character the reference parser treats as a line break, such as a vertical tab or U+2028
+- **WHEN** a value contains a character some parsers treat as a line break, such as a vertical tab or U+2028
 - **THEN** the value is read whole rather than truncated at that character
 
 ### Requirement: Valid YAML frontmatter writing
@@ -141,12 +142,12 @@ preserved unknown keys sorted by name.
 #### Scenario: Dates are written bare
 
 - **WHEN** a document is written
-- **THEN** `created` and `updated` are emitted unquoted exactly as the reference tool writes them, so the bytes stay interchangeable, even though a YAML reader types them as dates rather than strings
+- **THEN** `created` and `updated` are emitted unquoted, so the byte form of a document does not change between writes, even though a YAML reader types them as dates rather than strings
 
 #### Scenario: Empty values are written unambiguously
 
 - **WHEN** a document whose title is empty is written
-- **THEN** the field is emitted as `title: ""` and reads back as an empty title in specshelf and in a standard YAML parser
+- **THEN** the field is emitted as `title: ""` and reads back as an empty title, both here and in a standard YAML parser
 
 #### Scenario: Field ordering is stable
 
@@ -171,7 +172,7 @@ characters of the SHA-1 of the UTF-8 title. Colliding ids SHALL gain a `-2`,
 #### Scenario: Non-ASCII title
 
 - **WHEN** a spec titled `质量分析展示契约` is created
-- **THEN** its id segment equals the SHA-1-derived fallback the Python implementation produces for the same title
+- **THEN** its id segment is the first 10 hexadecimal characters of the SHA-1 of the UTF-8 title
 
 #### Scenario: Duplicate titles
 

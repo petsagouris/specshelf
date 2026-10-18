@@ -47,17 +47,17 @@ func resolveVault(cmd *cobra.Command) (vault.Resolution, error) {
 
 // stringList collects the raw values of a flag and its alias in the order they
 // are given. pflag's StringArray resets on the first Set of each flag, so two
-// aliases sharing one destination would lose the interleaving the reference
-// tool's argparse dest preserves; this Value always appends.
+// aliases sharing one destination would lose the interleaving; this Value always
+// appends.
 type stringList []string
 
 func (s *stringList) String() string         { return strings.Join(*s, ",") }
 func (s *stringList) Set(value string) error { *s = append(*s, value); return nil }
 func (s *stringList) Type() string           { return "value" }
 
-// splitValues merges the raw values of one flag's aliases into the reference
-// tool's list: comma-separated parts and repeated flags alike, each trimmed,
-// empty parts dropped, de-duplicated in first-seen order.
+// splitValues merges the raw values of one flag's aliases: comma-separated parts
+// and repeated flags alike, each trimmed, empty parts dropped, de-duplicated in
+// first-seen order.
 func splitValues(groups ...[]string) []string {
 	var out []string
 	seen := make(map[string]bool)

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const fixtureSpec = `---
+const specSample = `---
 id: spec-20261017-quality-analysis-display-contract
 kind: spec
 title: Quality analysis display contract
@@ -29,8 +29,8 @@ codex_sessions:
 ## Background
 `
 
-func TestParseFixtureDocument(t *testing.T) {
-	doc, err := Parse("specs/2026-10-17-quality-analysis-display-contract.md", []byte(fixtureSpec))
+func TestParseSampleDocument(t *testing.T) {
+	doc, err := Parse("specs/2026-10-17-quality-analysis-display-contract.md", []byte(specSample))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -60,8 +60,8 @@ func TestParseFixtureDocument(t *testing.T) {
 	}
 }
 
-// The reference implementation writes titles a YAML parser would misread; the
-// reader must hand them back unchanged.
+// Titles a YAML parser would misread have to come back unchanged; a read must
+// never rewrite a document's name.
 func TestParseTitleThatLooksLikeYAML(t *testing.T) {
 	for _, title := range []string{"#1 priority", "- dash start", "*bold* start", `He said "hi"`, "Fix #42: the thing"} {
 		raw := "---\ntitle: " + title + "\n---\nbody\n"
@@ -112,8 +112,8 @@ func TestParseWithoutFrontmatter(t *testing.T) {
 	}
 }
 
-// An empty title is empty: not the file stem, and not the "[]" the reference
-// implementation renders an empty list as.
+// An empty title is empty: not the file stem, and not the text "[]" an empty
+// list would render as.
 func TestEmptyValuesAreEmpty(t *testing.T) {
 	for _, raw := range []string{
 		"---\ntitle:\n---\nbody\n",

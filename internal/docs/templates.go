@@ -1,7 +1,7 @@
 package docs
 
-// SpecTemplate is the default body of a new spec. Its bytes match the Python
-// reference vault's templates/spec.md exactly.
+// SpecTemplate is the default body of a new spec, and the bytes written to
+// templates/spec.md in a new vault.
 const SpecTemplate = `# {title}
 
 ## Background
@@ -19,8 +19,8 @@ const SpecTemplate = `# {title}
 ## Decisions
 `
 
-// DecisionTemplate is the default body of a new decision. Its bytes match the
-// Python reference vault's templates/decision.md exactly.
+// DecisionTemplate is the default body of a new decision, and the bytes written
+// to templates/decision.md in a new vault.
 const DecisionTemplate = `# {title}
 
 ## Context
@@ -32,8 +32,7 @@ const DecisionTemplate = `# {title}
 ## Related Specs
 `
 
-// VaultReadme is the default vault README. Its bytes match the Python reference
-// vault's README.md exactly.
+// VaultReadme is the default vault README, written to README.md in a new vault.
 const VaultReadme = "# Agent Spec Vault\n" +
 	"\n" +
 	"Global Markdown specs and decisions for AI coding agents.\n" +

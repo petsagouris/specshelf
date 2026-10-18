@@ -1,8 +1,6 @@
 package frontmatter
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"unicode/utf8"
 )
@@ -12,21 +10,8 @@ import (
 // back with the same values a caller sees. An input it cannot read (an
 // unterminated block) is a documented outcome, not a failure.
 func FuzzReadFrontmatter(f *testing.F) {
-	for _, vault := range []string{"python_vault", "python_vault_rewritten"} {
-		root := filepath.Join("..", "..", "testdata", vault)
-		for _, dir := range []string{"specs", "decisions"} {
-			entries, err := os.ReadDir(filepath.Join(root, dir))
-			if err != nil {
-				f.Fatalf("reading %s: %v", dir, err)
-			}
-			for _, entry := range entries {
-				data, err := os.ReadFile(filepath.Join(root, dir, entry.Name()))
-				if err != nil {
-					f.Fatalf("reading %s: %v", entry.Name(), err)
-				}
-				f.Add(data)
-			}
-		}
+	for _, doc := range sampleDocuments {
+		f.Add([]byte(doc))
 	}
 
 	for _, seed := range []string{

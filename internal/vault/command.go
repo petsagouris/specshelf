@@ -123,10 +123,10 @@ func newDocument(id string, in NewDocument, body, date, name string) frontmatter
 // LinkSessions resolves ref, appends sessions to its codex_sessions, stamps
 // updated with today's date, rewrites the document atomically and refreshes the
 // index. It returns the document's path. Unknown keys and the body are kept, so
-// linking never discards what it did not set. An empty sessions list is an error,
-// as in the reference tool. A resolved document outside the vault root is refused
-// with an OutsideVaultError and left byte-identical, because reference resolution
-// tries an existing path first and would otherwise rewrite any file the user names.
+// linking never discards what it did not set. An empty sessions list is an error.
+// A resolved document outside the vault root is refused with an OutsideVaultError
+// and left byte-identical, because reference resolution tries an existing path
+// first and would otherwise rewrite any file the user names.
 func LinkSessions(root, ref string, sessions []string) (string, error) {
 	merged := mergeUnique(nil, sessions)
 	if len(merged) == 0 {
@@ -164,8 +164,7 @@ func copyMetadata(in frontmatter.Metadata) frontmatter.Metadata {
 }
 
 // mergeUnique concatenates two lists, trims each item, drops empty ones and
-// de-duplicates while preserving first-seen order — the reference tool's
-// merge_unique.
+// de-duplicates while preserving first-seen order.
 func mergeUnique(existing, additions []string) []string {
 	var out []string
 	seen := make(map[string]bool, len(existing)+len(additions))

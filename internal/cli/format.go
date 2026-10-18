@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// The --format values list and search accept. tsv is the reference default and
-// the byte shape its callers already parse; table is the only human format and
-// the only one colour may reach.
+// The --format values list and search accept. tsv is the default and the byte
+// shape callers already parse; table is the only human format and the only one
+// colour may reach.
 const (
 	formatTSV   = "tsv"
 	formatTable = "table"
@@ -23,13 +23,13 @@ const (
 	formatJSONL = "jsonl"
 )
 
-// listColumns are the fields the list tabular formats render, in the reference
-// tool's TSV column order. The names are the index record's field names, so a
-// consumer can switch between the index and the command output.
+// listColumns are the fields the list tabular formats render, in TSV column
+// order. The names are the index record's field names, so a consumer can switch
+// between the index and the command output.
 var listColumns = []string{"id", "kind", "status", "updated", "repos", "tags", "codex_sessions", "path", "title"}
 
-// searchColumns are the fields the search tabular formats render, in the
-// reference tool's TSV column order.
+// searchColumns are the fields the search tabular formats render, in TSV column
+// order.
 var searchColumns = []string{"id", "kind", "location", "snippet"}
 
 // checkFormat validates --format and folds --json into it: --json is --format
@@ -105,7 +105,7 @@ func listCells(record vault.IndexRecord) []string {
 }
 
 // searchCells renders one match as the four cells every search format but JSONL
-// shares: the reference tool's id, kind, path with its line, and snippet.
+// shares: id, kind, path with its line, and snippet.
 func searchCells(match vault.Match) []string {
 	location := match.Path
 	if match.Line > 0 {
@@ -123,8 +123,7 @@ func formatRows[T any](items []T, cells func(T) []string) [][]string {
 	return rows
 }
 
-// writeTSV writes rows tab-separated with a newline after every row, the shape
-// the reference tool prints.
+// writeTSV writes rows tab-separated with a newline after every row.
 func writeTSV(out io.Writer, rows [][]string) error {
 	for _, row := range rows {
 		if _, err := fmt.Fprintln(out, strings.Join(row, "\t")); err != nil {

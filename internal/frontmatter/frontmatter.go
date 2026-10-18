@@ -48,8 +48,8 @@ func splitFrontmatter(name string, data []byte) (raw string, hasFrontmatter bool
 }
 
 // normalise prepares raw document bytes for parsing: a leading byte-order mark is
-// dropped, and CRLF and lone CR become LF. The reference implementation seeds a
-// BOM'd document to "no frontmatter" and therefore loses all of its metadata.
+// dropped, and CRLF and lone CR become LF. Without this a document saved that way
+// would read as having no frontmatter at all, and lose every field.
 func normalise(text string) string {
 	text = strings.TrimPrefix(text, bom)
 	if !strings.Contains(text, "\r") {

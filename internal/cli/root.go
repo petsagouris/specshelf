@@ -98,8 +98,8 @@ func NewRootCommand() *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return &usageError{err: err}
 	})
-	// The reference tool has no completion command; task 4.4 adds one that
-	// generates the scripts explicitly, so cobra's implicit one is off.
+	// `completion` generates the scripts explicitly, so cobra's implicit one is
+	// off.
 	root.CompletionOptions.DisableDefaultCmd = true
 
 	flags := root.PersistentFlags()

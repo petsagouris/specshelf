@@ -12,8 +12,7 @@ import (
 )
 
 // IndexRecord is one line of index.jsonl: a document's metadata plus its vault
-// relative path and summary, in the field order the reference implementation
-// writes.
+// relative path and summary, in a fixed field order.
 type IndexRecord struct {
 	ID            string
 	Kind          string
@@ -28,11 +27,11 @@ type IndexRecord struct {
 	Summary       string
 }
 
-// MarshalJSON renders the record as the reference tool's
-// json.dumps(record, ensure_ascii=False) does: a fixed key order, ": " after a
-// key and ", " between list items, and every character the reference leaves
-// alone written as itself. encoding/json cannot produce these bytes — it escapes
-// `<`, `>`, `&`, U+2028 and U+2029 and puts no space after a colon.
+// MarshalJSON renders the record as one line: a fixed key order, ": " after a key
+// and ", " between list items, and every character that does not have to be
+// escaped written as itself. encoding/json cannot produce these bytes — it
+// HTML-escapes `<`, `>`, `&`, escapes U+2028 and U+2029, and puts no space after a
+// colon.
 func (r IndexRecord) MarshalJSON() ([]byte, error) { return r.appendJSON(nil), nil }
 
 // EncodeIndex renders records as the whole content of index.jsonl: one JSON
@@ -189,11 +188,10 @@ func newRecord(doc frontmatter.Document, rel string) IndexRecord {
 }
 
 // summary is the first body line that is neither blank nor a heading, with
-// surrounding whitespace removed — the reference implementation's
-// first_content_line, which strips a line before deciding whether it is a
-// heading, so an indented "#" line is a heading too. Lines are split the way
-// Python's str.splitlines splits them, so a body holding a vertical tab, a form
-// feed, NEL, U+2028 or U+2029 summarises the same way the reference does.
+// surrounding whitespace removed. A line is trimmed before it is tested, so an
+// indented "#" line is a heading too. Line breaks are the ones isLineBreak names,
+// so a body holding a vertical tab, a form feed, NEL, U+2028 or U+2029
+// summarises on its first real line.
 func summary(body string) string {
 	for _, line := range strings.FieldsFunc(body, isLineBreak) {
 		text := strings.TrimSpace(line)
@@ -204,9 +202,8 @@ func summary(body string) string {
 	return ""
 }
 
-// isLineBreak reports whether r is a line boundary in Python's str.splitlines,
-// which is what the reference implementation's summary uses: the ASCII breaks
-// plus NEL, U+2028 and U+2029. The reader has already normalised CRLF and lone
+// isLineBreak reports whether r ends a summary line: the ASCII breaks the reader
+// also treats as breaks, plus NEL, U+2028 and U+2029. The reader has already normalised CRLF and lone
 // CR to LF in the body.
 func isLineBreak(r rune) bool {
 	switch r {
@@ -243,11 +240,10 @@ func (r IndexRecord) appendJSON(dst []byte) []byte {
 	return append(dst, '}')
 }
 
-// appendJSONString writes s as a JSON string the way CPython's
-// json.dumps(..., ensure_ascii=False) does: escape the two mandatory
-// characters, the five short control escapes, and any other control character
-// below 0x20 as \u00xx, leaving everything else — including 0x7F and all
-// non-ASCII — as its own bytes.
+// appendJSONString writes s as a JSON string: escape the two mandatory
+// characters, the five control characters that have a short escape, and any other
+// control character below 0x20 as \u00xx, leaving everything else — including
+// 0x7F and all non-ASCII — as its own bytes.
 func appendJSONString(dst []byte, s string) []byte {
 	const hex = "0123456789abcdef"
 	dst = append(dst, '"')
@@ -277,7 +273,7 @@ func appendJSONString(dst []byte, s string) []byte {
 }
 
 // appendJSONList writes items as a JSON array with ", " between them. A nil
-// slice is the empty array, matching the reference's empty list.
+// slice is the empty array.
 func appendJSONList(dst []byte, items []string) []byte {
 	dst = append(dst, '[')
 	for i, item := range items {

@@ -8,9 +8,8 @@ The split is one package per reason to change, rather than one flat package or a
 package per command: a boundary that exists for a stated reason is a boundary a
 test can hold, and it keeps each surface's imports pointing one way. This file
 records the boundaries that exist; the format of what is on disk belongs to
-[`FORMAT.md`](FORMAT.md), the configuration file to [`CONFIG.md`](CONFIG.md), and
-every intentional difference from the Python reference tool to
-[`DIVERGENCES.md`](DIVERGENCES.md).
+[`FORMAT.md`](FORMAT.md), and the configuration file to
+[`CONFIG.md`](CONFIG.md).
 
 ## The shape
 
@@ -22,14 +21,13 @@ argv → cmd/specshelf → internal/cli ─┬→ internal/vault ─┬→ inter
 
 internal/tui ──(its Store interface)──→ internal/vault
 internal/gitx          leaf
-internal/conformance   test-only: builds cmd/specshelf and drives the binary
 ```
 
 Dependencies point one way. `internal/frontmatter`, `internal/config`,
-`internal/docs`, `internal/gitx` and `internal/conformance` import nothing else
-in this project. `internal/vault` builds on the first three. `internal/cli` and
-`internal/tui` call `internal/vault` and never go around it. `cmd/specshelf`
-imports `internal/cli` and nothing else.
+`internal/docs` and `internal/gitx` import nothing else in this project.
+`internal/vault` builds on the first three. `internal/cli` and `internal/tui`
+call `internal/vault` and never go around it. `cmd/specshelf` imports
+`internal/cli` and nothing else.
 
 ## The single-writer rule
 
@@ -58,8 +56,6 @@ What the rule forbids:
 - The CLI's `edit` command does not rewrite a document either. It passes a
   `vault.Editor` implementation into `vault.Edit`, which performs the write and
   the index refresh; the TUI uses the same seam.
-- `internal/conformance` drives the built binary instead of calling the store, so
-  it never becomes a second code path.
 
 What the rule does not forbid: `internal/docs` returns template bytes in memory
 rather than writing files, and `internal/config` reads the configuration file,
@@ -81,15 +77,12 @@ test in `cmd/specshelf` compares against the directories on disk.
 | `internal/gitx` | Committing and pushing a vault by running the user's own git binary. It is a leaf with no vault knowledge; the `sync` command in `internal/cli` calls it. |
 | `internal/tui` | The interactive full-screen browser: model, views, key bindings, in-memory filtering and the editor handoff. It reaches the vault only through its own `Store` interface, one method per operation. |
 | `internal/docs` | The embedded vault templates and README bytes a new vault is seeded with. |
-| `internal/conformance` | The test-only compatibility package: the default suite builds the real binary and compares it against the committed Python fixtures; the `//go:build conformance` differential suite runs both tools against equivalent vaults. |
 
 ## Where the rest is written down
 
 - The behaviour each capability must deliver: [`specs/`](specs/).
 - Vault layout, frontmatter fields, document id, file name and index record:
   [`FORMAT.md`](FORMAT.md).
-- Every intentional divergence from the reference tool, each with its own test:
-  [`DIVERGENCES.md`](DIVERGENCES.md).
 - Configuration keys, file location and precedence: [`CONFIG.md`](CONFIG.md).
 - How v0.1.0 was specified and verified: [`HISTORY-0.1.0.md`](HISTORY-0.1.0.md).
 

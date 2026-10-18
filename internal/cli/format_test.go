@@ -15,7 +15,7 @@ import (
 
 // formatVault lays down the two-document vault the format tests read: one spec
 // carrying every list field, one decision. Both share an updated date, so the
-// order is id descending the way the reference sorts.
+// order is id descending.
 func formatVault(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -139,8 +139,8 @@ func TestListFormatFieldNameParity(t *testing.T) {
 	}
 }
 
-// TestListDefaultFormatIsTSV pins the default the reference fixes: no flag and
-// --format tsv are the same bytes, with nine tab-separated columns.
+// TestListDefaultFormatIsTSV pins the default: no flag and --format tsv are the
+// same bytes, with nine tab-separated columns.
 func TestListDefaultFormatIsTSV(t *testing.T) {
 	root := formatVault(t)
 
@@ -159,10 +159,9 @@ func TestListDefaultFormatIsTSV(t *testing.T) {
 	}
 }
 
-// TestEmptyListPrintsNothing pins the empty-listing divergence: the reference
-// prints a "No specs or decisions found." line on stdout, which a caller parsing
-// one row per line would read as a document, while specshelf prints nothing
-// (task 3.13).
+// TestEmptyListPrintsNothing pins the empty listing: a "No specs or decisions
+// found." line on stdout would be read as a document by a caller parsing one row
+// per line, so an empty vault prints nothing at all.
 func TestEmptyListPrintsNothing(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("SPECSHELF_CONFIG", filepath.Join(t.TempDir(), "config.toml"))

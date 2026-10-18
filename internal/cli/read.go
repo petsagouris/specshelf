@@ -26,7 +26,7 @@ func addFilterFlags(cmd *cobra.Command) {
 }
 
 // filterValues reads the filter flags into the store's Filters, rejecting a kind
-// outside the reference tool's three values as a usage error.
+// outside the three values as a usage error.
 func filterValues(cmd *cobra.Command) (vault.Filters, error) {
 	flags := cmd.Flags()
 	kind, err := flags.GetString("kind")
@@ -64,8 +64,8 @@ func printWarnings(cmd *cobra.Command, warnings []vault.Warning) {
 	}
 }
 
-// newListCommand lists documents as the reference tool's nine-column TSV (the
-// default), or in the table, csv or jsonl format the --format flag selects.
+// newListCommand lists documents as nine-column TSV (the default), or in the
+// table, csv or jsonl format the --format flag selects.
 func newListCommand() *cobra.Command {
 	var limit int
 	var jsonOut bool
@@ -219,8 +219,8 @@ func newPrimeCommand() *cobra.Command {
 	return cmd
 }
 
-// writePrime renders the reference tool's Markdown summary, colouring its
-// headings when the caller's style is on.
+// writePrime renders the Markdown summary an agent reads, colouring its headings
+// when the caller's style is on.
 func writePrime(out io.Writer, root string, records []vault.IndexRecord, painter style) error {
 	if _, err := fmt.Fprintf(out, "%s\n\nVault: `%s`\n\n", painter.bold("# Agent Spec Vault"), root); err != nil {
 		return err
@@ -267,8 +267,7 @@ func newPathCommand() *cobra.Command {
 	return cmd
 }
 
-// limitRecords applies a command's --limit, treating a negative limit as zero,
-// as the reference tool does.
+// limitRecords applies a command's --limit, treating a negative limit as zero.
 func limitRecords(records []vault.IndexRecord, limit int) []vault.IndexRecord {
 	if limit < 0 {
 		limit = 0
@@ -279,7 +278,7 @@ func limitRecords(records []vault.IndexRecord, limit int) []vault.IndexRecord {
 	return records
 }
 
-// orDash renders an empty field as the reference tool's "-" placeholder.
+// orDash renders an empty field as the "-" placeholder.
 func orDash(value string) string {
 	if value == "" {
 		return "-"

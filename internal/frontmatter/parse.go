@@ -10,8 +10,8 @@ import (
 // a known field must take is decided by the typed view, not here.
 type Metadata map[string]any
 
-// parseBlock parses the frontmatter dialect of the reference implementation and
-// is deliberately more tolerant, so that a document it mangles still reads:
+// parseBlock parses the frontmatter dialect, deliberately tolerantly, so a
+// document that is not exactly what the writer emits still reads:
 //
 //   - blank lines are ignored and do not close an open list
 //   - a list item is a line whose first non-space, non-tab characters are "- ",
@@ -89,8 +89,8 @@ func closingQuote(line string) int {
 }
 
 // listItem reports whether line is a list item and returns its trimmed value.
-// The reference implementation only recognises exactly two leading spaces, which
-// silently discards items under any other indentation.
+// Any indentation is accepted, not just two spaces, so an item written by a
+// different editor is not silently discarded.
 func listItem(line string) (string, bool) {
 	trimmed := strings.TrimLeft(line, " \t")
 	if !strings.HasPrefix(trimmed, "- ") {
@@ -99,10 +99,9 @@ func listItem(line string) (string, bool) {
 	return strings.TrimSpace(trimmed[len("- "):]), true
 }
 
-// unquote removes the surrounding quotes from a quoted value, which the
-// reference implementation never does. A value whose inner text is not a
-// well-formed scalar of that quoting style is returned unchanged, so a stray
-// quote cannot make the reader mangle text it does not understand.
+// unquote removes the surrounding quotes from a quoted value. A value whose inner
+// text is not a well-formed scalar of that quoting style is returned unchanged, so
+// a stray quote cannot make the reader mangle text it does not understand.
 func unquote(value string) string {
 	if len(value) < 2 {
 		return value

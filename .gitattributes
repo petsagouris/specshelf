@@ -3,8 +3,8 @@
 # then reports every one of them as unformatted.
 * text=auto eol=lf
 
-# Byte-sensitive paths: fixtures and goldens are compared byte-for-byte, so git
-# must never convert their line endings. -text disables every conversion.
-testdata/** -text
+# Byte-sensitive paths: goldens and the pinned vault templates are compared
+# byte-for-byte, so git must never convert their line endings. -text disables
+# every conversion.
 internal/**/testdata/** -text
 *.jsonl -text

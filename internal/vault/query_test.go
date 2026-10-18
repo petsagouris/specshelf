@@ -4,8 +4,7 @@ import (
 	"testing"
 )
 
-// Query ANDs the filters and orders by updated descending, then id descending —
-// the reference tool's order, which the recorded fixtures pin.
+// Query ANDs the filters and orders by updated descending, then id descending.
 func TestQueryFiltersAndOrders(t *testing.T) {
 	root := t.TempDir()
 	writeDoc(t, root, "specs/2026-10-17-b.md", "---\nid: spec-20261017-b\nkind: spec\ntitle: B\nstatus: active\nupdated: 2026-10-17\nrepos:\n  - billing\ntags:\n  - tooling\ncodex_sessions:\n  - s1\n---\n# B\n")

@@ -9,8 +9,7 @@ import (
 
 // The known fields, in the order they are written. Every one of them is written
 // even when it holds nothing, so a document's shape does not depend on which
-// fields happen to be set — and so a rewrite of an upstream document keeps the
-// same nine lines the reference tool produces.
+// fields happen to be set.
 var (
 	scalarFields = []string{"id", "kind", "title", "status", "created", "updated"}
 	listFields   = []string{"repos", "tags", "codex_sessions"}
@@ -19,8 +18,7 @@ var (
 // Marshal renders a document: its frontmatter block followed by its body.
 //
 // The six scalar fields come first, then the three list fields, then any other
-// keys sorted by name, which is how the reference tool orders them and what keeps
-// a rewrite byte-stable.
+// keys sorted by name, which is what keeps a rewrite byte-stable.
 func Marshal(doc Document) []byte {
 	var b strings.Builder
 	b.WriteString("---\n")
@@ -52,8 +50,8 @@ func Marshal(doc Document) []byte {
 
 // writeList writes a block sequence, or an empty flow sequence when there is
 // nothing in it. A bare "key:" would be read as null by a YAML parser, and "[]"
-// is read as an empty list by this package and by the reference tool alike. The
-// key is quoted like a value, so a key beginning "- " is not read back as an item.
+// is read back as an empty list. The key is quoted like a value, so a key
+// beginning "- " is not read back as an item.
 func writeList(b *strings.Builder, key string, items []string) {
 	if len(items) == 0 {
 		b.WriteString(renderScalar(key))
@@ -79,9 +77,9 @@ func renderScalar(value string) string {
 
 // needsQuoting reports whether a value would be read as something other than the
 // string it holds, or would break the line it sits on. Dates are deliberately not
-// treated as needing quotes: created and updated are written bare by the
-// reference tool, and quoting every document's dates would trade byte
-// compatibility for a type distinction nobody consumes.
+// treated as needing quotes: created and updated are written bare, and quoting
+// every document's dates would trade a stable byte form for a type distinction
+// nobody consumes.
 func needsQuoting(value string) bool {
 	switch {
 	case value == "":

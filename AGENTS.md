@@ -8,8 +8,9 @@ before writing code, and give it to every delegated agent.
 `specshelf` is a Go port and superset of
 [agent-spec-vault](https://github.com/xixifast/agent-spec-vault) (Python, MIT,
 v0.1.2). It keeps durable specs, cross-repo contracts and ADR-style decisions as
-Markdown under a user-level vault (`~/.agents/spec-vault` by default). What it
-must do is specified in `docs/specs/`, not in this file.
+Markdown under a user-level vault (`~/.agents/spec-vault` by default). The vault
+format is ours now: what it must do is specified in `docs/specs/`, not in this
+file.
 
 ## Read these before writing code
 
@@ -22,7 +23,7 @@ must do is specified in `docs/specs/`, not in this file.
 | How v0.1.0 was built, and how each piece was verified | `docs/HISTORY-0.1.0.md` |
 
 Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
-`upgrade`, `tui`, `conformance`.
+`upgrade`, `tui`.
 
 ## Hard constraints
 
@@ -42,9 +43,11 @@ Capabilities: `vault-format`, `vault-store`, `cli`, `config`, `git-sync`,
   `go install` only, so the module is the whole of what ships.
 - MIT, retaining the upstream copyright notice: this is a derived work — see
   `LICENSE` and `NOTICE`.
-- Vault format, document bytes and document ids stay compatible with the Python
-  tool. Every intentional divergence is listed in `docs/DIVERGENCES.md` and has a
-  test that asserts it exactly.
+- The vault format is specified in `docs/specs/vault-format.md` and described in
+  `docs/FORMAT.md`: layout, frontmatter fields, document ids and the index record.
+  Vaults written by earlier versions keep working. Every format change is a
+  deliberate edit to the spec, and it covers what happens to documents already
+  on disk.
 - Go 1.26 minimum.
 
 ## Package map and the one rule
@@ -73,8 +76,6 @@ specified as a numbered task, its verification is recorded in
 `docs/HISTORY-0.1.0.md`.
 
 Never point a command at the real vault. Tests use temporary directories.
-`testdata/` holds generated fixtures from the Python reference implementation and
-must not be hand-edited.
 
 ## Parallel work
 

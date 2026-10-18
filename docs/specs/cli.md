@@ -7,28 +7,28 @@ exit codes callers and agents can rely on.
 
 ## Requirements
 
-### Requirement: Reference command parity
+### Requirement: The base command set
 
 The tool SHALL provide `init`, `new`, `decision`, `link-session`, `list`,
-`search`, `show`, `index`, `prime` and `path`, accepting the flag names,
-aliases, defaults and output shapes of the Python reference implementation, so
-that existing vaults, scripts and agent instructions keep working.
+`search`, `show`, `index`, `prime` and `path`, with stable flag names, aliases,
+defaults and output shapes, so that existing vaults, scripts and agent
+instructions keep working.
 
-#### Scenario: Creating a document with the reference flags
+#### Scenario: Creating a document with the multi-value flags
 
 - **WHEN** `specshelf new "Contract" --repos a,b --tags x --codex-session s1` runs
 - **THEN** the document is created with those repos, tags and session ids and its absolute path is printed to stdout
 
-#### Scenario: Reference filter flags on listing
+#### Scenario: Filter flags on listing
 
 - **WHEN** `specshelf list --kind decision --tag tooling` runs
 - **THEN** only decisions carrying that tag are printed
 
 ### Requirement: Superset commands
 
-In addition to the reference commands, the tool SHALL provide `edit`, `rm`,
-`status`, `doctor`, `export`, `stats`, `sync`, `upgrade` and `ui`, each
-documented in `--help` and each listed by the root help output.
+In addition to that base set, the tool SHALL provide `edit`, `rm`, `status`,
+`doctor`, `export`, `stats`, `sync`, `upgrade` and `ui`, each documented in
+`--help` and each listed by the root help output.
 
 #### Scenario: Root help lists every command
 

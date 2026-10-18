@@ -19,10 +19,10 @@ func eachCommand(cmd *cobra.Command, visit func(*cobra.Command)) {
 	}
 }
 
-// TestSupersetCommandsAreAvailable pins the "new commands" divergence: the nine
-// commands the reference tool does not have are present, available, and listed
-// by the root help (task 3.13). It also covers the superset options that ride on
-// existing commands, --json, --format, --color and --slug.
+// TestSupersetCommandsAreAvailable pins the command surface: the nine commands of
+// the superset are present, available, and listed by the root help. It also covers
+// the superset options that ride on existing commands, --json, --format, --color
+// and --slug.
 func TestSupersetCommandsAreAvailable(t *testing.T) {
 	root := NewRootCommand()
 	available := map[string]bool{}

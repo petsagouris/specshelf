@@ -7,7 +7,7 @@ import (
 
 // Document is one vault document: the metadata parsed out of its frontmatter, its
 // body, and the name it was read from — which the accessors fall back to when a
-// field is absent, the way the reference implementation does.
+// field is absent.
 type Document struct {
 	Name     string
 	Metadata Metadata
@@ -35,7 +35,7 @@ func Parse(name string, data []byte) (Document, error) {
 func (d Document) ID() string { return d.scalar("id", d.stem()) }
 
 // Kind returns "spec" or "decision". A document that does not say is classified
-// by the directory it sits in, as the reference implementation does.
+// by the directory it sits in.
 func (d Document) Kind() string {
 	if kind := d.scalar("kind", ""); kind != "" {
 		return kind
@@ -48,7 +48,7 @@ func (d Document) Kind() string {
 
 // Title returns the document's title, falling back to the file stem when the
 // field is absent. A title that is present but empty is empty — never a stem,
-// and never the text "[]" the reference implementation produces.
+// and never the text "[]" that an empty list would render as.
 func (d Document) Title() string { return d.scalar("title", d.stem()) }
 
 // Status returns the frontmatter status, empty when absent.
