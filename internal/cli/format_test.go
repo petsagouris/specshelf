@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -279,7 +280,13 @@ func TestShowAndPathJSON(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("path --json exit = %d, stderr = %s", code, stderr)
 	}
-	want := `{"root":"` + root + `","source":"--home"}` + "\n"
+	// The root goes through encoding/json in the tool, so a Windows path's
+	// backslashes arrive escaped; build the expectation the same way.
+	quotedRoot, err := json.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"root":` + string(quotedRoot) + `,"source":"--home"}` + "\n"
 	if path != want {
 		t.Errorf("path --json = %q, want %q", path, want)
 	}

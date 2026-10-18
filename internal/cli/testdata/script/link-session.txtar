@@ -1,6 +1,6 @@
 # link-session appends the sessions, stamps updated, and prints the path.
 exec specshelf --home $WORK/vault link-session 2026-10-17-note --codex-session s1,s2
-cmpenv stdout link.stdout
+cmppath stdout link.stdout
 grep 'codex_sessions:' $WORK/vault/specs/2026-10-17-note.md
 grep '  - s1' $WORK/vault/specs/2026-10-17-note.md
 grep '  - s2' $WORK/vault/specs/2026-10-17-note.md

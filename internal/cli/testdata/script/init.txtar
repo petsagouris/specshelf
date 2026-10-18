@@ -1,6 +1,6 @@
 # init creates the vault layout, prints its root, and writes no index.
 exec specshelf --home $WORK/vault init
-cmpenv stdout init.stdout
+cmppath stdout init.stdout
 exists $WORK/vault/specs
 exists $WORK/vault/decisions
 exists $WORK/vault/templates/spec.md
@@ -11,12 +11,12 @@ exists $WORK/vault/README.md
 # A user-edited template survives a second init, which still prints the root.
 cp edited-template.md $WORK/vault/templates/spec.md
 exec specshelf --home $WORK/vault init
-cmpenv stdout init.stdout
+cmppath stdout init.stdout
 grep 'user edit survives' $WORK/vault/templates/spec.md
 
 # A relative --home is resolved to an absolute root, as the reference does.
 exec specshelf --home rel-vault init
-cmpenv stdout relinit.stdout
+cmppath stdout relinit.stdout
 exists $WORK/rel-vault/specs
 
 -- init.stdout --

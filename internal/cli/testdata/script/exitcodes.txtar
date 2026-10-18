@@ -4,7 +4,7 @@
 
 # Success: the payload on stdout, nothing at all on stderr.
 exitcode 0 specshelf --home $WORK/vault path
-cmpenv stdout path.stdout
+cmppath stdout path.stdout
 stderr '^$'
 
 # Usage errors exit 2.

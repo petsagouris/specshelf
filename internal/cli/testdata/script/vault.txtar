@@ -3,11 +3,11 @@
 
 # A declared name selects its path, and every command operates on that vault.
 exec specshelf --vault work path
-stdout '/work-vault$'
+stdout '[/\\]work-vault$'
 
 exec specshelf --vault work init
 exec specshelf --vault work new 'Named note'
-stdout 'work-vault/specs/\d{4}-\d{2}-\d{2}-named-note\.md$'
+stdout 'work-vault[/\\]specs[/\\]\d{4}-\d{2}-\d{2}-named-note\.md$'
 exec specshelf --vault work list
 stdout 'spec-\d{8}-named-note\tspec\tactive'
 
