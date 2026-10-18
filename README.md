@@ -35,6 +35,9 @@ commands instead.
 | `k`, `up` | move the selection up |
 | `enter` | open the selected document |
 | `esc` | go back or cancel |
+| `e` | edit the open document in your editor |
+| `s` | set the open document's status |
+| `d` | delete the open document (confirm with y) |
 | `/` | filter the list as you type |
 | `K` | cycle the kind filter |
 | `S` | cycle the status filter |
