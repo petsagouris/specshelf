@@ -5,12 +5,8 @@ A single-binary Go implementation of
 Markdown-native vault of durable specs, cross-repo contracts and decisions for
 AI coding agents.
 
-Same vault, same documents, same ids — installable with `go install` on Linux,
-macOS and Windows, with no Python toolchain required.
-
-**Status: under construction.** The behaviour contract lives in `docs/specs/`;
-`AGENTS.md` explains how the work is organised and where each requirement is
-written down.
+Vaults written by that tool keep working. `go install` produces one binary for
+Linux, macOS and Windows, with no Python toolchain required.
 
 ## Install
 
@@ -29,22 +25,28 @@ go install ./cmd/specshelf
 ## Quickstart
 
 The vault lives at `~/.agents/spec-vault` unless `--home`, `SPECSHELF_HOME` or
-the configuration file names another. Create a vault, add a document, and read
-it back:
+the configuration file names another. Create a vault, add a document, and find it
+again:
 
 ```bash
 # Create the vault layout in its default location.
 specshelf init
 
-# Add a spec, then list what the vault holds.
+# Add a spec, then list and search what the vault holds.
 specshelf new Retries --repos billing --tags reliability
 specshelf list
-
-# Search, preview the agent summary, and check the vault's health.
 specshelf search retries
+
+# Summarise the vault for an agent to read.
 specshelf prime
-specshelf doctor
 ```
+
+The rest of the loop has the same shape. `show <ref>` prints one document,
+`edit <ref>` hands it to your editor, `status <ref> <status>` moves its status,
+`link-session <ref> --codex-session <id>` records which agent session produced
+it, and `sync` commits and pushes the vault with your own `git`. They are
+described here rather than run because each needs something the block above does
+not have — a document reference, an editor, or a remote.
 
 `specshelf --help` lists every command, and `specshelf <command> --help`
 documents its flags.
@@ -54,35 +56,17 @@ documents its flags.
 `specshelf ui` opens a full-screen browser over the vault: a list of every
 document with its kind, title, status, update date and tags, a detail view
 showing one document's frontmatter and body, a plain-text filter that narrows
-the loaded list as you type, and a help view. It needs an interactive terminal;
-when stdout is redirected it exits non-zero and points you at the non-interactive
-commands instead.
+the loaded list as you type, and a help view. Press `?` for the keys. It needs an
+interactive terminal; when stdout is redirected it exits non-zero and points you
+at the non-interactive commands instead.
 
-| Key | Action |
-| --- | --- |
-| `j`, `down` | move the selection down |
-| `k`, `up` | move the selection up |
-| `enter` | open the selected document |
-| `esc` | go back or cancel |
-| `e` | edit the open document in your editor |
-| `s` | set the open document's status |
-| `d` | delete the open document (confirm with y) |
-| `/` | filter the list as you type |
-| `K` | cycle the kind filter |
-| `S` | cycle the status filter |
-| `R` | cycle the repo filter |
-| `T` | cycle the tag filter |
-| `r` | reload the vault from disk |
-| `c` | create a document |
-| `tab` | switch kind in the create prompt |
-| `?` | show this help |
-| `q`, `ctrl+c` | quit |
+## Documentation
 
-## Development
+Architecture, the vault format and the configuration file are described in
+[`docs/`](docs/), and the behaviour each capability must deliver is specified in
+[`docs/specs/`](docs/specs/).
 
-```bash
-go build ./... && go vet ./... && gofmt -l . && go test ./...
-```
+Contributions are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licence
 

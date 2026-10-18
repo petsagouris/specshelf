@@ -6,15 +6,14 @@ import (
 )
 
 // Binding is one session key: the keys that trigger it and what they do.
-// Bindings is the single source of truth shared by the help view and the README,
-// which the README test checks against each other so they cannot drift.
+// Bindings is the single source of truth for the session's keys: the help view
+// renders it, and the snapshot of that view under testdata/ pins the result.
 type Binding struct {
 	Keys  []string
 	Label string
 }
 
-// Bindings lists the session's keys in the order the help view and the README
-// present them.
+// Bindings lists the session's keys in the order the help view presents them.
 var Bindings = []Binding{
 	{[]string{"j", "down"}, "move the selection down"},
 	{[]string{"k", "up"}, "move the selection up"},
@@ -35,8 +34,7 @@ var Bindings = []Binding{
 	{[]string{"q", "ctrl+c"}, "quit"},
 }
 
-// keyLine renders one binding: the keys, two spaces, and the label. The two
-// spaces are what the README test splits on when it reads the rendered help.
+// keyLine renders one binding: the keys, two spaces, and the label.
 func (b Binding) keyLine() string {
 	return fmt.Sprintf("%-14s  %s", strings.Join(b.Keys, ", "), b.Label)
 }
