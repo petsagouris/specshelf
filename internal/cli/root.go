@@ -123,6 +123,7 @@ func NewRootCommand() *cobra.Command {
 		newExportCommand(),
 		newDoctorCommand(),
 		newStatsCommand(),
+		newSyncCommand(),
 		newCompletionCommand(),
 		newManCommand(),
 	)

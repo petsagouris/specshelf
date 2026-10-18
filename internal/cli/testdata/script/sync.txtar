@@ -1,0 +1,63 @@
+# sync commits the vault with the user's own git and, when push is enabled,
+# pushes it. It reports what happened on stdout; a git failure is on stderr with
+# a non-zero exit. Everything happens in temporary repositories under $WORK; the
+# remote is a local bare repository, so no network is used.
+
+[!exec:git] skip
+
+# Isolate git from the machine's configuration and identity.
+env GIT_CONFIG_GLOBAL=$WORK/gitconfig
+env GIT_CONFIG_SYSTEM=$WORK/gitconfig
+env GIT_AUTHOR_NAME=Specshelf Test
+env GIT_AUTHOR_EMAIL=test@example.com
+env GIT_COMMITTER_NAME=Specshelf Test
+env GIT_COMMITTER_EMAIL=test@example.com
+
+# First sync in a plain directory initialises a repository and commits. --no-push
+# keeps it local, so no remote is needed.
+exec specshelf --home $WORK/vault init
+exec specshelf --home $WORK/vault new 'First note'
+exec specshelf --home $WORK/vault sync --no-push
+cmp stdout first.stdout
+exists $WORK/vault/.git
+
+# With nothing to commit the second run succeeds and says so.
+exec specshelf --home $WORK/vault sync --no-push
+stdout '^nothing to commit$'
+! stderr .
+
+# A configured remote: the default pushes the new commit and reports it.
+exec git init --bare --quiet $WORK/remote
+exec git -C $WORK/vault remote add origin $WORK/remote
+exec specshelf --home $WORK/vault new 'Second note'
+exec specshelf --home $WORK/vault sync
+cmp stdout push.stdout
+exec git -C $WORK/remote show-ref
+stdout 'refs/heads/'
+
+# The configured push default can be turned off; the commit still happens.
+exec specshelf --home $WORK/vault new 'Third note'
+env SPECSHELF_CONFIG=$WORK/config-off.toml
+exec specshelf --home $WORK/vault sync
+stdout '^committed changes$'
+! stdout 'pushed'
+
+# --push overrides a configured default of false.
+exec specshelf --home $WORK/vault new 'Fourth note'
+exec specshelf --home $WORK/vault sync --push
+stdout '^pushed to origin$'
+
+# --push and --no-push together are a usage error.
+exitcode 2 specshelf --home $WORK/vault sync --push --no-push
+stderr '^specshelf: --push and --no-push are mutually exclusive$'
+
+-- first.stdout --
+initialised git repository
+committed changes
+-- push.stdout --
+committed changes
+pushed to origin
+-- config-off.toml --
+[git]
+push = false
+-- gitconfig --
