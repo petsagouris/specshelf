@@ -60,6 +60,8 @@ path is a defect, not a shortcut.
 go build ./... && go vet ./... && gofmt -l . && go test ./...
 ```
 
+Cross-platform expectations are part of that verification. A test that compares a filesystem path must build it with `filepath`, never with a literal containing `/`, because the tool prints the platform's separator; the index record's `path` field is the single exception and stays `/` everywhere. Normalising separators must be lossless — `filepath.ToSlash` rewrites every backslash, including JSON's `\"` escape — so apply it to both sides of a comparison, or only where a path is really embedded.
+
 Each task in `tasks.md` states its own verification. Run it and paste the raw
 output; a summary of the output is not evidence. Fuzz runs
 (`go test -fuzz FuzzX -fuzztime 30s`) count as raw output too.
