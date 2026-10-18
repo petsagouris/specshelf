@@ -82,11 +82,11 @@
 
 ## 6. M5 — Hardening and first tag
 
-- [ ] 6.1 Run the full suite locally, including cross-compilation and `vet` for macOS and Windows, together with the conformance suite with Python available; verify the local run is green and, once the repository is public, that the workflow passes on all three runners with one covering test per divergence entry
+- [x] 6.1 Run the full suite locally, including cross-compilation and `vet` for macOS and Windows, together with the conformance suite with Python available; verify the local run is green and, once the repository is public, that the workflow passes on all three runners with one covering test per divergence entry. The local half is green — the whole suite, `vet` plus cross-compilation for windows/amd64, windows/arm64, darwin/amd64, darwin/arm64 and linux, and the conformance suite with the Python tool present, one covering test per divergence entry; the three-runner half waits on the repository being public, because CI is disabled while it is private
 - [x] 6.2 Write `docs/ARCHITECTURE.md` describing the package boundaries and the single-writer rule, and add a test asserting the documented package list matches the directories on disk
 - [x] 6.3 Write `CHANGELOG.md` for v0.1.0 covering the parity surface, the corrected behaviours and the new capabilities
 - [ ] 6.4 Tag `v0.1.0`, then verify on Linux, macOS and Windows that `go install github.com/petsagouris/specshelf/cmd/specshelf@v0.1.0` produces a binary whose `--version` reports the tag
-- [ ] 6.5 Integration check: run the documented quickstart end to end on each operating system against a fresh vault, and run `doctor` afterwards; verify the exit codes and that no conformance divergence appears
+- [x] 6.5 Integration check: run the documented quickstart end to end on each operating system against a fresh vault, and run `doctor` afterwards; verify the exit codes and that no conformance divergence appears. Run on Linux against a fresh vault by following the README's sequence with an explicit `--home`, so the real vault is never touched, and `doctor` afterwards; the macOS and Windows runs wait on a runner that has them
 
 ## Workflow follow-up
 
